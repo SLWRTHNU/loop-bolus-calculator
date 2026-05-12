@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Mobile-first insulin bolus calculator for Type 1 diabetes management. Guest mode + Google Drive sync." />
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Loop Bolus" />
+
+  <title>Loop Bolus Calculator</title>
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <span class="app-header__title">Loop Bolus</span>
+
+    <!-- Desktop nav (hidden on mobile) -->
+    <nav class="desktop-nav" style="display:none" aria-label="Main navigation">
+      <button class="nav-btn active" data-nav="calculator" aria-label="Calculator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h2m4 0h2M8 12h2m4 0h2M8 16h2m4 0h2"/></svg>
+        Calculator
+      </button>
+      <button class="nav-btn" data-nav="log" aria-label="Today's Log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Log
+      </button>
+      <button class="nav-btn" data-nav="how-to" aria-label="How To">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+        How-To
+      </button>
+      <button class="nav-btn" data-nav="contact" aria-label="Contact">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Contact
+      </button>
+      <button class="nav-btn" data-nav="donate" aria-label="Donate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        Donate
+      </button>
+      <button class="nav-btn" data-nav="settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+      </button>
+    </nav>
+  </header>
+
+  <!-- ── Main Content ─────────────────────────────────────────────── -->
+  <main class="app-main" id="main">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECTION: CALCULATOR
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="section" id="calculator" aria-label="Calculator">
+
+      <!-- Drive connect banner (guest mode) -->
+      <div class="drive-banner" id="drive-banner">
+        <div class="drive-banner__text">
+          <strong>Guest mode.</strong> Connect Google Drive to save settings, personal foods, and export daily logs.
+        </div>
+        <button class="btn btn--primary btn--sm" id="banner-connect-btn" onclick="document.querySelector('[data-nav=settings]').click()">
+          Connect
+        </button>
+      </div>
+
+      <!-- Meal Tabs -->
+      <div class="meal-tabs" id="meal-tabs" role="tablist" aria-label="Meal selection">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- BG / IOB / COB Panel -->
+      <div class="card" id="bg-panel">
+        <div class="card__title">Blood Glucose &amp; Insulin</div>
+
+        <!-- Current BG -->
+        <div class="field">
+          <div class="bg-source-row">
+            <label for="bg-source-select">BG Source</label>
+            <select class="input" id="bg-source-select" style="max-width:160px">
+              <option value="manual">Manual</option>
+              <option value="nightscout">Nightscout</option>
+              <option value="dexcom">Dexcom</option>
+            </select>
+          </div>
+          <div id="bg-manual" class="bg-value-row">
+            <input type="number" class="input" id="bg-value" placeholder="Current BG" step="0.1" min="0" aria-label="Current blood glucose" />
+            <span class="bg-unit" id="bg-unit-label">mmol/L</span>
+          </div>
+          <div id="bg-fetched" hidden>
+            <div class="bg-value-row">
+              <input type="number" class="input" id="bg-value-fetched" placeholder="—" step="0.1" min="0" readonly aria-label="Fetched blood glucose" />
+              <span class="bg-unit" id="bg-unit-label-2">mmol/L</span>
+              <button class="btn btn--secondary btn--sm" id="fetch-bg-btn" aria-label="Refresh BG">↻</button>
+            </div>
+            <div class="bg-timestamp" id="bg-timestamp" hidden></div>
+          </div>
+        </div>
+
+        <!-- IOB -->
+        <div class="field">
+          <div class="bg-source-row">
+            <label for="iob-source-select">IOB Source</label>
+            <select class="input" id="iob-source-select" style="max-width:160px">
+              <option value="manual">Manual</option>
+              <option value="nightscout">Nightscout</option>
+            </select>
+          </div>
+          <div class="bg-value-row">
+            <input type="number" class="input" id="iob-value" placeholder="Insulin on Board" step="0.01" min="0" aria-label="Insulin on board in units" />
+            <span class="bg-unit">U</span>
+            <button class="btn btn--secondary btn--sm" id="fetch-iob-btn" hidden aria-label="Fetch IOB">↻</button>
+          </div>
+        </div>
+
+        <!-- COB -->
+        <div class="field">
+          <div class="bg-source-row">
+            <label for="cob-source-select">COB Source</label>
+            <select class="input" id="cob-source-select" style="max-width:160px">
+              <option value="manual">Manual</option>
+              <option value="nightscout">Nightscout</option>
+            </select>
+          </div>
+          <div class="bg-value-row">
+            <input type="number" class="input" id="cob-value" placeholder="Carbs on Board (info only)" step="1" min="0" aria-label="Carbs on board in grams" />
+            <span class="bg-unit">g</span>
+            <button class="btn btn--secondary btn--sm" id="fetch-cob-btn" hidden aria-label="Fetch COB">↻</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meal Settings (Collapsible) -->
+      <div class="card" id="meal-settings-card">
+        <button class="collapsible-toggle" id="meal-settings-toggle" aria-expanded="false" aria-controls="meal-settings-panel">
+          <span>Meal Settings</span>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="meal-settings-panel" hidden>
+          <div style="height:12px"></div>
+          <div class="input-row">
+            <div class="field">
+              <label for="icr-input">ICR (g carbs / U)</label>
+              <input type="number" class="input" id="icr-input" placeholder="e.g. 10" min="1" step="0.5" />
+            </div>
+            <div class="field">
+              <label for="isf-input" id="isf-label">ISF (mmol/L per U)</label>
+              <input type="number" class="input" id="isf-input" placeholder="e.g. 2.5" min="0.1" step="0.1" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="target-bg-input">Target BG <span data-unit-label></span></label>
+            <input type="number" class="input" id="target-bg-input" placeholder="e.g. 5.5" min="0" step="0.1" />
+          </div>
+          <button class="btn btn--secondary btn--sm" id="fetch-profile-btn" hidden>
+            Pull from Nightscout Profile
+          </button>
+        </div>
+      </div>
+
+      <!-- Food Builder -->
+      <div class="card">
+        <div class="card__title">Food Builder</div>
+        <div class="food-rows" id="food-rows">
+          <!-- Rendered by JS -->
+        </div>
+        <button class="btn btn--secondary btn--sm" id="add-food-btn">+ Add Food</button>
+      </div>
+
+      <!-- Bolus Summary -->
+      <div class="bolus-summary" role="region" aria-label="Bolus summary" aria-live="polite">
+        <div class="bolus-summary__total">
+          <span class="bolus-summary__total-label">Total Bolus</span>
+          <div>
+            <span class="bolus-summary__total-value" id="summary-total">0.00</span>
+            <span class="bolus-summary__total-unit">U</span>
+          </div>
+        </div>
+        <div class="bolus-breakdown">
+          <div class="bolus-line">
+            <span class="bolus-line__label">Net Carbs</span>
+            <span class="bolus-line__value" id="summary-carbs">0.0 g</span>
+          </div>
+          <div class="bolus-line">
+            <span class="bolus-line__label">Meal Bolus</span>
+            <span class="bolus-line__value" id="summary-meal-bolus">0.00 U</span>
+          </div>
+          <div class="bolus-line">
+            <span class="bolus-line__label">Correction</span>
+            <span class="bolus-line__value" id="summary-correction">0.00 U</span>
+          </div>
+          <div class="bolus-line">
+            <span class="bolus-line__label">IOB Offset</span>
+            <span class="bolus-line__value" id="summary-iob">−0.00 U</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pre-Bolus Timing -->
+      <div class="card">
+        <div class="card__title">Pre-Bolus Timing</div>
+        <div class="prebolus-row">
+          <div class="field">
+            <label for="meal-time">Meal Start</label>
+            <input type="time" class="input" id="meal-time" aria-label="Meal start time" />
+          </div>
+          <div class="field">
+            <label for="lead-time">Lead Time (min)</label>
+            <input type="number" class="input" id="lead-time" value="13" min="0" max="60" step="1" aria-label="Lead time in minutes" />
+          </div>
+        </div>
+        <div class="prebolus-result">
+          <span class="prebolus-result__label">Bolus at</span>
+          <div class="prebolus-result__value" id="bolus-at">—</div>
+        </div>
+      </div>
+
+      <!-- Post-Meal BG Tracking (Collapsible) -->
+      <div class="card collapsible-section">
+        <button class="collapsible-toggle" id="post-bg-toggle" aria-expanded="false" aria-controls="post-bg-body">
+          <span>Post-Meal BG Tracking</span>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="post-bg-body" class="collapsible-body" hidden>
+          <div style="overflow-x:auto">
+            <table class="post-bg-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Min</th>
+                  <th>BG</th>
+                  <th>Trend</th>
+                  <th>Δ BG</th>
+                </tr>
+              </thead>
+              <tbody id="post-bg-rows"></tbody>
+            </table>
+          </div>
+          <button class="btn btn--secondary btn--sm mt-8" id="add-bg-reading-btn">+ Add Reading</button>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="card">
+        <div class="card__title">Notes</div>
+        <textarea class="input" id="meal-notes" rows="3" placeholder="Optional notes for this meal…" aria-label="Meal notes" style="resize:vertical"></textarea>
+      </div>
+
+      <!-- Log Button -->
+      <button class="btn btn--primary" id="log-meal-btn" aria-label="Log this meal">
+        Log Meal
+      </button>
+
+      <div class="disclaimer">
+        <strong>Nutritional data sourced from Health Canada's <em>Nutrient Value of Some Common Foods</em> (2008).</strong>
+        Carb factors are approximate and derived from published values. This information is provided for general reference only.
+        Always verify with a qualified healthcare professional. The developers of this tool make no warranties regarding the
+        accuracy of nutritional data and accept no liability for decisions made based on information provided by this calculator.
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECTION: TODAY'S LOG
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="section" id="log" hidden aria-label="Today's log">
+      <h1 class="page-title">Today's Log</h1>
+      <div id="log-entries">
+        <p class="empty-state">No meals logged today.</p>
+      </div>
+      <div class="btn-row mt-12">
+        <button class="btn btn--secondary" id="export-log-btn">Export to Drive</button>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECTION: HOW-TO
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="section" id="how-to" hidden aria-label="How to use">
+      <div class="how-to-placeholder">
+        <h1>How to Use Loop Bolus Calculator</h1>
+        <p class="text-muted mt-12">Step-by-step guides and videos coming soon.</p>
+        <div class="mt-12">
+          <p class="text-muted">Having trouble? <a href="#contact" onclick="navigate('contact')">Contact us</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECTION: CONTACT
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="section" id="contact" hidden aria-label="Contact">
+      <h1 class="page-title">Contact</h1>
+
+      <form
+        class="contact-form"
+        id="contact-form"
+        action="https://formspree.io/f/xojrronz"
+        method="POST"
+      >
+        <div class="field">
+          <label for="contact-name">Name</label>
+          <input type="text" class="input" id="contact-name" name="name" required autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="contact-email">Email</label>
+          <input type="email" class="input" id="contact-email" name="email" required autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="contact-subject">Subject</label>
+          <select class="input" id="contact-subject" name="subject">
+            <option value="General Question">General Question</option>
+            <option value="Bug Report">Bug Report</option>
+            <option value="Feature Request">Feature Request</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="contact-message">Message</label>
+          <textarea class="input" id="contact-message" name="message" rows="5" required style="resize:vertical"></textarea>
+        </div>
+        <button type="submit" class="btn btn--primary">Send Message</button>
+        <p class="contact-note">No SLA is guaranteed. I'll do my best to respond when I can.</p>
+      </form>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECTION: DONATE
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="section" id="donate" hidden aria-label="Donate">
+      <h1 class="page-title">Support This Tool</h1>
+
+      <div class="donate-intro">
+        <p>Loop Bolus Calculator is, and always will be, completely free to use.</p>
+        <p>Managing diabetes is exhausting — physically, mentally, and financially. If this tool makes even one mealtime a little easier, that's more than enough for me.</p>
+        <p>If you'd like to say thanks with a few dollars, I genuinely appreciate it. If you can't or don't want to, please don't. Using the tool for free is the whole point.</p>
+        <p>If you want to help but money's tight, telling another T1D family about this page means more than you know.</p>
+        <p>If you do want to contribute, here are a few ways:</p>
+      </div>
+
+      <div class="donate-cards">
+        <a class="donate-card" href="https://paypal.me/kyleb2112" target="_blank" rel="noopener noreferrer">
+          <div class="donate-card__icon">🅿️</div>
+          <div class="donate-card__body">
+            <div class="donate-card__title">PayPal</div>
+            <div class="donate-card__sub">Send via PayPal — you choose the amount</div>
+          </div>
+        </a>
+        <a class="donate-card" href="https://ko-fi.com/iriscalculator" target="_blank" rel="noopener noreferrer">
+          <div class="donate-card__icon">☕</div>
+          <div class="donate-card__body">
+            <div class="donate-card__title">Ko-fi</div>
+            <div class="donate-card__sub">Buy me a coffee on Ko-fi</div>
+          </div>
+        </a>
+        <div class="donate-card" style="cursor:default">
+          <div class="donate-card__icon">🇨🇦</div>
+          <div class="donate-card__body">
+            <div class="donate-card__title">E-Transfer (Canada only)</div>
+            <div class="donate-card__sub">
+              Send to <strong>kyle.e.beaulieu@gmail.com</strong><br>
+              No auto-deposit password needed — I'll accept manually.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SECTION: SETTINGS
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="section" id="settings" hidden aria-label="Settings">
+      <h1 class="page-title">Settings</h1>
+
+      <!-- Google Account -->
+      <div class="settings-section">
+        <h2>Google Account</h2>
+
+        <div id="connect-block">
+          <p class="text-muted text-sm mb-12">Connect Google Drive to save settings, personal foods, and export daily logs to your own Drive folder.</p>
+          <button class="btn btn--primary" id="connect-google-btn">Connect Google Drive</button>
+        </div>
+
+        <div id="connected-block" hidden>
+          <div class="drive-status drive-status--connected" id="drive-status">Connected</div>
+          <p class="text-sm mb-8">Signed in as <strong id="connected-email"></strong></p>
+          <div class="btn-row">
+            <a class="btn btn--secondary btn--sm" id="drive-folder-link" href="#" target="_blank" rel="noopener" hidden>Open Drive Folder</a>
+            <button class="btn btn--danger btn--sm" id="disconnect-google-btn">Disconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Drive Config -->
+      <div class="settings-section">
+        <h2>Google Drive Setup</h2>
+        <div class="field">
+          <label for="drive-folder-name">Folder name in Drive</label>
+          <input type="text" class="input" id="drive-folder-name" value="Loop Bolus Calculator" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn--secondary" id="build-folders-btn">Build Folder Structure</button>
+          <a class="btn btn--secondary btn--sm" id="food-sheet-link" href="#" target="_blank" rel="noopener" hidden>Open Food Chart</a>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Nightscout -->
+      <div class="settings-section">
+        <h2>Nightscout</h2>
+        <div class="field">
+          <label for="ns-url">Nightscout URL</label>
+          <input type="url" class="input" id="ns-url" placeholder="https://yoursite.herokuapp.com" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="ns-secret">API Secret</label>
+          <input type="password" class="input" id="ns-secret" placeholder="Optional" autocomplete="off" />
+          <p class="warning-note">⚠ Stored in your Google Drive config file</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn--secondary btn--sm" id="save-ns-btn">Save</button>
+          <button class="btn btn--secondary btn--sm" id="test-ns-btn">Test Connection</button>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Dexcom -->
+      <div class="settings-section">
+        <h2>Dexcom Share</h2>
+        <div class="field">
+          <label for="dex-user">Dexcom Username</label>
+          <input type="text" class="input" id="dex-user" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="dex-pass">Dexcom Password</label>
+          <input type="password" class="input" id="dex-pass" autocomplete="off" />
+          <p class="warning-note">⚠ Stored in your Google Drive config file</p>
+        </div>
+        <div class="field">
+          <label for="dex-region">Region</label>
+          <select class="input" id="dex-region">
+            <option value="us">US (share2.dexcom.com)</option>
+            <option value="international">International (shareous1.dexcom.com)</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn--secondary btn--sm" id="save-dex-btn">Save</button>
+          <button class="btn btn--secondary btn--sm" id="test-dex-btn">Test Connection</button>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Units & Theme -->
+      <div class="settings-section">
+        <h2>Display</h2>
+        <div class="input-row">
+          <div class="field">
+            <label for="units-select">Blood Glucose Units</label>
+            <select class="input" id="units-select">
+              <option value="mmol">mmol/L</option>
+              <option value="mgdl">mg/dL</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="theme-select">Theme</label>
+            <select class="input" id="theme-select">
+              <option value="system">System</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Data Disclaimer -->
+      <div class="settings-section">
+        <h2>Data Disclaimer</h2>
+        <div class="disclaimer">
+          <strong>Nutritional data sourced from Health Canada's <em>Nutrient Value of Some Common Foods</em> (2008).</strong>
+          Carb factors are approximate and derived from published values. This information is provided for general reference only.
+          Always verify with a qualified healthcare professional. The developers of this tool make no warranties regarding the
+          accuracy of nutritional data and accept no liability for decisions made based on information provided by this calculator.
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ── Bottom Navigation (mobile) ──────────────────────────────── -->
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <button class="nav-btn active" data-nav="calculator" aria-label="Calculator">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h2m4 0h2M8 12h2m4 0h2M8 16h2m4 0h2"/></svg>
+      Calc
+    </button>
+    <button class="nav-btn" data-nav="log" aria-label="Today's Log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Log
+    </button>
+    <button class="nav-btn" data-nav="how-to" aria-label="How To">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+      How-To
+    </button>
+    <button class="nav-btn" data-nav="contact" aria-label="Contact">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Contact
+    </button>
+    <button class="nav-btn" data-nav="donate" aria-label="Donate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Donate
+    </button>
+    <button class="nav-btn" data-nav="settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+
+  <!-- ── Init Script ───────────────────────────────────────────────── -->
+  <script>
+    // Show desktop nav on wider screens
+    if (window.innerWidth >= 640) {
+      document.querySelector('.desktop-nav').style.display = 'flex';
+    }
+
+    // Wire up post-BG collapsible (plain JS, no module needed)
+    document.getElementById('post-bg-toggle').addEventListener('click', function() {
+      const body = document.getElementById('post-bg-body');
+      const open = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', !open);
+      body.hidden = open;
+    });
+
+    // navigate fn needed before module loads for how-to link
+    function navigate(id) {
+      document.querySelectorAll('.section').forEach(s => s.hidden = true);
+      const t = document.getElementById(id);
+      if (t) t.hidden = false;
+      document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === id));
+      window.location.hash = '#' + id;
+    }
+  </script>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
