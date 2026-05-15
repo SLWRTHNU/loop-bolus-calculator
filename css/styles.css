@@ -37,7 +37,7 @@
   --bg-3: #f1f5f9;
   --text: #0f172a;
   --text-2: #475569;
-  --border: #e2e8f0;
+  --border: #C8C8C0;
   --shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
 
@@ -220,6 +220,7 @@ a:hover { text-decoration: underline; }
 }
 
 .section { padding-top: 8px; }
+.section--contained { max-width: 760px; margin: 0 auto; }
 
 /* ── Meal Tabs ───────────────────────────────────────────────────────────── */
 .meal-tabs {
@@ -255,20 +256,12 @@ a:hover { text-decoration: underline; }
   border-color: var(--accent);
 }
 
-/* ── Three-column grid ───────────────────────────────────────────────────── */
+/* ── Four-column top grid ────────────────────────────────────────────────── */
 .top-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 16px;
-}
-
-/* ── Bottom two-column row ───────────────────────────────────────────────── */
-.bottom-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 16px;
-  margin-top: 16px;
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
@@ -335,85 +328,92 @@ a:hover { text-decoration: underline; }
   font-weight: 500;
 }
 
-/* ── BG Panel ────────────────────────────────────────────────────────────── */
-.bg-source-row {
+/* ── Inline Fields (BG panel, Meal Settings) ─────────────────────────────── */
+.inline-field {
   display: flex;
-  gap: 8px;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-.bg-source-row label { font-size: 0.8rem; color: var(--text-2); flex-shrink: 0; white-space: nowrap; }
-.bg-source-row select { flex: 1; }
+.inline-field:last-of-type { margin-bottom: 0; }
 
-.bg-value-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+.inline-label {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  font-weight: 500;
+  flex: 0 0 72px;
+  white-space: nowrap;
+}
+
+.inline-unit {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.inline-note {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  margin-top: 8px;
 }
 
 .bg-unit-label { font-size: 0.8rem; color: var(--text-2); flex-shrink: 0; white-space: nowrap; }
 .bg-timestamp { font-size: 0.75rem; color: var(--text-2); margin-top: 4px; }
 
-.units-card-row {
+/* ── Timing Card ─────────────────────────────────────────────────────────── */
+.timing-row-inline {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+  margin-bottom: 10px;
 }
 
-.units-card-row label { font-size: 0.8rem; color: var(--text-2); flex-shrink: 0; white-space: nowrap; }
-.units-card-row select { flex: 1; }
-
-/* ── Timing Card ─────────────────────────────────────────────────────────── */
-.timing-field {
-  margin-bottom: 14px;
-}
-
-.timing-field:last-child { margin-bottom: 0; }
-
-.timing-label {
+.timing-inline-label {
   font-size: 0.8rem;
   color: var(--text-2);
-  margin-bottom: 4px;
   font-weight: 500;
+  flex: 0 0 96px;
+  white-space: nowrap;
 }
 
-.timing-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.timing-row .input { flex: 1; }
-
-.lock-btn {
-  padding: 6px 12px;
+.set-btn {
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--border);
   background: var(--bg-3);
   color: var(--text-2);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-family: var(--font);
   font-weight: 600;
   cursor: pointer;
   min-height: 34px;
   white-space: nowrap;
-  transition: all 0.15s;
   flex-shrink: 0;
+  transition: all 0.15s;
 }
 
-.lock-btn:hover { border-color: var(--accent); color: var(--accent); }
-.lock-btn.locked { background: var(--accent); color: #fff; border-color: var(--accent); }
+.set-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
 
-.elapsed-timer {
-  font-size: 0.8rem;
+.minutes-between {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+}
+
+.minutes-between__label { font-size: 0.78rem; color: var(--text-2); }
+
+.minutes-between__value {
+  font-size: 1rem;
   font-weight: 700;
   color: var(--accent);
-  margin-top: 4px;
   font-variant-numeric: tabular-nums;
+  margin-left: auto;
 }
 
 /* ── Food Builder Card ───────────────────────────────────────────────────── */
@@ -473,7 +473,6 @@ a:hover { text-decoration: underline; }
   font-weight: 600;
 }
 
-.food-row--alt td { background: var(--bg-3); }
 
 .food-col-name   { min-width: 200px; }
 .food-col-cf     { width: 70px; text-align: center; }
@@ -797,6 +796,7 @@ a:hover { text-decoration: underline; }
 .warning-note { font-size: 0.75rem; color: var(--warning); margin-top: 4px; }
 
 /* ── Contact ─────────────────────────────────────────────────────────────── */
+.contact-intro { color: var(--text-2); font-size: 0.9rem; line-height: 1.65; margin-bottom: 20px; }
 .contact-form { display: flex; flex-direction: column; gap: 12px; }
 .contact-form label { font-size: 0.875rem; color: var(--text-2); display: block; margin-bottom: 4px; }
 .contact-note { font-size: 0.8rem; color: var(--text-2); margin-top: 8px; }
@@ -886,10 +886,14 @@ a:hover { text-decoration: underline; }
   .recipe-open .calculator-content { /* no special shrink needed; recipe panel is aside */ }
 }
 
+/* ── Tablet (768–1199px): 2-column top grid ──────────────────────────────── */
+@media (max-width: 1199px) and (min-width: 768px) {
+  .top-grid { grid-template-columns: 1fr 1fr; }
+}
+
 /* ── Mobile fallback (< 768px) stacks everything ────────────────────────── */
 @media (max-width: 767px) {
   .top-grid { grid-template-columns: 1fr; }
-  .bottom-grid { grid-template-columns: 1fr; }
   .food-entry-row { grid-template-columns: 1fr 1fr; }
   .food-entry-row > *:last-child { grid-column: 1 / -1; }
   .recipe-panel {

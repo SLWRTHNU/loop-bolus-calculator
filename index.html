@@ -46,7 +46,6 @@
         Settings
       </button>
 
-      <!-- Tools button -->
       <div class="tools-wrapper">
         <button id="tools-btn" aria-haspopup="true" aria-controls="tools-dropdown">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
@@ -70,9 +69,7 @@
     <button class="btn btn--primary btn--sm" onclick="document.querySelector('[data-nav=settings]').click()">Connect</button>
   </div>
 
-  <!-- ── Calculator Layout wrapper (shrinks when recipe panel opens) ──────── -->
   <div class="calculator-layout" id="calculator-layout">
-
     <div class="calculator-content">
       <main class="app-main" id="main">
 
@@ -81,99 +78,62 @@
         ════════════════════════════════════════════════════════════════ -->
         <section class="section" id="calculator" aria-label="Calculator">
 
-          <!-- Meal Tabs -->
           <div class="meal-tabs" id="meal-tabs" role="tablist" aria-label="Meal selection"></div>
 
-          <!-- Three-column top row -->
+          <!-- Four-column top row -->
           <div class="top-grid">
 
-            <!-- Card 1: Blood Glucose & Insulin -->
+            <!-- Card 1: Blood Glucose & Insulin (compact inline rows) -->
             <div class="card" id="bg-panel">
               <div class="card__title">Blood Glucose &amp; Insulin</div>
 
-              <!-- BG -->
-              <div class="field">
-                <div class="bg-source-row">
-                  <label for="bg-source-select">BG Source</label>
-                  <select class="input input--sm" id="bg-source-select" style="max-width:140px">
-                    <option value="manual">Manual</option>
-                    <option value="nightscout">Nightscout</option>
-                    <option value="dexcom">Dexcom</option>
-                  </select>
-                </div>
-                <div id="bg-manual" class="bg-value-row">
-                  <input type="number" class="input" id="bg-value" placeholder="Current BG" step="0.1" min="0" aria-label="Current blood glucose" />
-                  <span class="bg-unit-label">mmol/L</span>
-                </div>
-                <div id="bg-fetched" hidden>
-                  <div class="bg-value-row">
-                    <input type="number" class="input" id="bg-value-fetched" placeholder="—" step="0.1" min="0" readonly aria-label="Fetched blood glucose" />
-                    <span class="bg-unit-label">mmol/L</span>
-                    <button class="btn btn--secondary btn--sm" id="fetch-bg-btn">↻</button>
-                  </div>
-                  <div class="bg-timestamp" id="bg-timestamp" hidden></div>
-                </div>
+              <div class="inline-field">
+                <label class="inline-label">Current BG</label>
+                <input type="number" class="input input--sm" id="bg-value" placeholder="—" step="0.1" min="0" aria-label="Current blood glucose" />
+                <span class="inline-unit bg-unit-label">mmol/L</span>
+                <button class="btn btn--icon btn--sm fetch-btn" id="fetch-bg-btn" hidden title="Refresh from connected source">↻</button>
+              </div>
+              <div class="bg-timestamp" id="bg-timestamp" hidden></div>
+
+              <div class="inline-field">
+                <label class="inline-label">IOB</label>
+                <input type="number" class="input input--sm" id="iob-value" placeholder="—" step="0.01" min="0" aria-label="Insulin on board" />
+                <span class="inline-unit">U</span>
+                <button class="btn btn--icon btn--sm fetch-btn" id="fetch-iob-btn" hidden title="Refresh from Nightscout">↻</button>
               </div>
 
-              <!-- IOB -->
-              <div class="field">
-                <div class="bg-source-row">
-                  <label for="iob-source-select">IOB Source</label>
-                  <select class="input input--sm" id="iob-source-select" style="max-width:140px">
-                    <option value="manual">Manual</option>
-                    <option value="nightscout">Nightscout</option>
-                  </select>
-                </div>
-                <div class="bg-value-row">
-                  <input type="number" class="input" id="iob-value" placeholder="Insulin on Board" step="0.01" min="0" />
-                  <span class="bg-unit-label" style="width:1.5rem">U</span>
-                  <button class="btn btn--secondary btn--sm" id="fetch-iob-btn" hidden>↻</button>
-                </div>
+              <div class="inline-field">
+                <label class="inline-label">COB</label>
+                <input type="number" class="input input--sm" id="cob-value" placeholder="—" step="1" min="0" aria-label="Carbs on board" />
+                <span class="inline-unit">g</span>
+                <button class="btn btn--icon btn--sm fetch-btn" id="fetch-cob-btn" hidden title="Refresh from Nightscout">↻</button>
               </div>
-
-              <!-- COB -->
-              <div class="field">
-                <div class="bg-source-row">
-                  <label for="cob-source-select">COB (info only)</label>
-                  <select class="input input--sm" id="cob-source-select" style="max-width:140px">
-                    <option value="manual">Manual</option>
-                    <option value="nightscout">Nightscout</option>
-                  </select>
-                </div>
-                <div class="bg-value-row">
-                  <input type="number" class="input" id="cob-value" placeholder="Carbs on Board" step="1" min="0" />
-                  <span class="bg-unit-label" style="width:1.5rem">g</span>
-                  <button class="btn btn--secondary btn--sm" id="fetch-cob-btn" hidden>↻</button>
-                </div>
-              </div>
-
-              <!-- Units (inline) -->
-              <div class="units-card-row">
-                <label for="units-in-card">Units</label>
-                <select class="input input--sm" id="units-in-card">
-                  <option value="mmol">mmol/L</option>
-                  <option value="mgdl">mg/dL</option>
-                </select>
-              </div>
+              <p class="inline-note">COB is informational only</p>
             </div>
 
-            <!-- Card 2: Meal Settings -->
+            <!-- Card 2: Meal Settings (compact inline rows) -->
             <div class="card" id="meal-settings-card">
               <div class="card__title">Meal Settings</div>
 
-              <div class="field">
-                <label for="icr-input">ICR (g carbs / U)</label>
-                <input type="number" class="input" id="icr-input" placeholder="e.g. 10" min="1" step="0.5" />
+              <div class="inline-field">
+                <label class="inline-label">ICR</label>
+                <input type="number" class="input input--sm" id="icr-input" placeholder="—" min="1" step="0.5" aria-label="Insulin to carb ratio" />
+                <span class="inline-unit">g / U</span>
               </div>
-              <div class="field">
-                <label for="isf-input" id="isf-label">ISF (mmol/L per U)</label>
-                <input type="number" class="input" id="isf-input" placeholder="e.g. 2.5" min="0.1" step="0.1" />
+
+              <div class="inline-field">
+                <label class="inline-label" id="isf-label">ISF</label>
+                <input type="number" class="input input--sm" id="isf-input" placeholder="—" min="0.1" step="0.1" aria-label="Insulin sensitivity factor" />
+                <span class="inline-unit isf-unit-label">mmol/L per U</span>
               </div>
-              <div class="field">
-                <label for="target-bg-input">Target BG <span data-unit-label></span></label>
-                <input type="number" class="input" id="target-bg-input" placeholder="e.g. 5.5" min="0" step="0.1" />
+
+              <div class="inline-field">
+                <label class="inline-label">Target BG</label>
+                <input type="number" class="input input--sm" id="target-bg-input" placeholder="—" min="0" step="0.1" aria-label="Target blood glucose" />
+                <span class="inline-unit bg-unit-label">mmol/L</span>
               </div>
-              <button class="btn btn--secondary btn--sm" id="fetch-profile-btn" hidden>
+
+              <button class="btn btn--secondary btn--sm" id="fetch-profile-btn" hidden style="margin-top:10px">
                 Pull from Nightscout
               </button>
             </div>
@@ -182,85 +142,25 @@
             <div class="card" id="timing-card">
               <div class="card__title">Timing</div>
 
-              <!-- Bolus given at -->
-              <div class="timing-field">
-                <div class="timing-label">Bolus given at</div>
-                <div class="timing-row">
-                  <input type="time" class="input input--sm" id="bolus-time-input" aria-label="Bolus given at" />
-                  <button class="lock-btn" id="bolus-lock-btn">Lock</button>
-                </div>
-                <div class="elapsed-timer" id="bolus-elapsed" hidden></div>
+              <div class="timing-row-inline">
+                <label class="timing-inline-label">Bolus given at</label>
+                <input type="time" class="input input--sm" id="bolus-time-input" aria-label="Bolus given at time" />
+                <button class="set-btn" id="bolus-set-btn" title="Click to record current time" aria-label="Set bolus time to now">Set</button>
               </div>
 
-              <!-- Meal started at -->
-              <div class="timing-field">
-                <div class="timing-label">Meal started at</div>
-                <div class="timing-row">
-                  <input type="time" class="input input--sm" id="meal-time-input" aria-label="Meal started at" />
-                  <button class="lock-btn" id="meal-lock-btn">Lock</button>
-                </div>
-                <div class="elapsed-timer" id="meal-elapsed" hidden></div>
+              <div class="timing-row-inline">
+                <label class="timing-inline-label">Meal started at</label>
+                <input type="time" class="input input--sm" id="meal-time-input" aria-label="Meal started at time" />
+                <button class="set-btn" id="meal-set-btn" title="Click to record current time" aria-label="Set meal time to now">Set</button>
               </div>
-            </div>
-          </div><!-- /top-grid -->
 
-          <!-- Food Builder (full width) -->
-          <div class="card food-builder-card">
-            <div class="card__title">Food Builder</div>
-
-            <!-- Entry row -->
-            <div class="food-entry-row">
-              <div>
-                <div class="food-entry-label">Food</div>
-                <input type="text" class="input input--sm" id="entry-food-search" placeholder="Search food…" autocomplete="off" />
-              </div>
-              <div>
-                <div class="food-entry-label">CF</div>
-                <input type="number" class="input input--sm" id="entry-cf" placeholder="—" readonly tabindex="-1" />
-              </div>
-              <div>
-                <div class="food-entry-label">Weight (g)</div>
-                <input type="number" class="input input--sm" id="entry-weight" placeholder="g" min="0" step="1" />
-              </div>
-              <div>
-                <div class="food-entry-label">Carbs (g)</div>
-                <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" />
-              </div>
-              <div style="display:flex;align-items:flex-end">
-                <button class="btn btn--primary btn--sm" id="add-food-btn">Add to Meal</button>
+              <div class="minutes-between" id="minutes-between" hidden>
+                <span class="minutes-between__label">Minutes between</span>
+                <span class="minutes-between__value" id="minutes-between-value">—</span>
               </div>
             </div>
 
-            <!-- Spreadsheet food list -->
-            <div class="food-table-wrapper">
-              <table class="food-table">
-                <thead>
-                  <tr>
-                    <th class="food-col-name">Food</th>
-                    <th class="food-col-cf">CF</th>
-                    <th class="food-col-weight">Weight (g)</th>
-                    <th class="food-col-carbs">Carbs (g)</th>
-                    <th class="food-col-remove"></th>
-                  </tr>
-                </thead>
-                <tbody id="food-rows">
-                  <tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text-2);font-size:.875rem">Add a food above to get started</td></tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="3" class="food-total-label">Total Carbs</td>
-                    <td class="food-total-value" id="food-total-carbs">0.0 g</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          <!-- Bottom row: Bolus Summary + Notes -->
-          <div class="bottom-grid">
-
-            <!-- Bolus Summary -->
+            <!-- Card 4: Bolus Summary -->
             <div class="card bolus-summary" role="region" aria-label="Bolus summary" aria-live="polite">
               <div class="card__title">Bolus Summary</div>
               <div class="bolus-total-display">
@@ -288,19 +188,70 @@
                   <span class="bolus-line__value" id="summary-iob">−0.00 U</span>
                 </div>
               </div>
-              <button class="btn btn--primary btn--full bolus-given-btn" id="bolus-given-btn">
+              <button class="btn btn--primary btn--full bolus-given-btn" id="bolus-given-btn" style="margin-top:12px">
                 Bolus Given
               </button>
             </div>
+          </div><!-- /top-grid -->
 
-            <!-- Notes -->
-            <div class="card notes-card">
-              <div class="card__title">Notes</div>
-              <textarea class="input" id="meal-notes" rows="5" placeholder="Optional notes for this meal…" style="resize:vertical;flex:1"></textarea>
+          <!-- Food Builder (full width) -->
+          <div class="card food-builder-card">
+            <div class="card__title">Food Builder</div>
+
+            <div class="food-entry-row">
+              <div>
+                <div class="food-entry-label">Food</div>
+                <input type="text" class="input input--sm" id="entry-food-search" placeholder="Search food…" autocomplete="off" />
+              </div>
+              <div>
+                <div class="food-entry-label">CF</div>
+                <input type="number" class="input input--sm" id="entry-cf" placeholder="—" readonly tabindex="-1" />
+              </div>
+              <div>
+                <div class="food-entry-label">Weight (g)</div>
+                <input type="number" class="input input--sm" id="entry-weight" placeholder="g" min="0" step="1" />
+              </div>
+              <div>
+                <div class="food-entry-label">Carbs (g)</div>
+                <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" />
+              </div>
+              <div style="display:flex;align-items:flex-end">
+                <button class="btn btn--primary btn--sm" id="add-food-btn">Add to Meal</button>
+              </div>
             </div>
-          </div><!-- /bottom-grid -->
 
-          <!-- Post-Meal BG Tracker (hidden by default, toggled via Tools menu) -->
+            <div class="food-table-wrapper">
+              <table class="food-table">
+                <thead>
+                  <tr>
+                    <th class="food-col-name">Food</th>
+                    <th class="food-col-cf">CF</th>
+                    <th class="food-col-weight">Weight (g)</th>
+                    <th class="food-col-carbs">Carbs (g)</th>
+                    <th class="food-col-remove"></th>
+                  </tr>
+                </thead>
+                <tbody id="food-rows">
+                  <tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text-2);font-size:.875rem">Add a food above to get started</td></tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" class="food-total-label">Total Carbs</td>
+                    <td class="food-total-value" id="food-total-carbs">0.0 g</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Notes (full width) -->
+          <div class="card notes-card">
+            <div class="card__title">Notes</div>
+            <textarea class="input" id="meal-notes" rows="3" placeholder="Optional notes for this meal…" style="resize:vertical"></textarea>
+          </div>
+
+          <!-- Post-Meal BG Tracker (hidden by default) -->
           <div class="card post-tracker-card" id="post-meal-tracker" hidden aria-label="Post-meal BG tracker">
             <div class="card__title">
               Post-Meal BG Tracker
@@ -320,12 +271,7 @@
               <table class="post-bg-table">
                 <thead>
                   <tr>
-                    <th>Time</th>
-                    <th>Min Since Bolus</th>
-                    <th>BG</th>
-                    <th>Trend</th>
-                    <th>Delta</th>
-                    <th></th>
+                    <th>Time</th><th>Min Since Bolus</th><th>BG</th><th>Trend</th><th>Delta</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="post-bg-rows"></tbody>
@@ -344,7 +290,7 @@
         <!-- ════════════════════════════════════════════════════════════════
              SECTION: TODAY'S LOG
         ════════════════════════════════════════════════════════════════ -->
-        <section class="section" id="log" hidden aria-label="Today's log">
+        <section class="section section--contained" id="log" hidden aria-label="Today's log">
           <h1 class="page-title">Today's Log</h1>
           <div id="log-entries">
             <p class="empty-state">No meals logged today.</p>
@@ -357,7 +303,7 @@
         <!-- ════════════════════════════════════════════════════════════════
              SECTION: HOW-TO
         ════════════════════════════════════════════════════════════════ -->
-        <section class="section" id="how-to" hidden aria-label="How to use">
+        <section class="section section--contained" id="how-to" hidden aria-label="How to use">
           <div class="how-to-placeholder">
             <h1>How to Use Loop Bolus Calculator</h1>
             <p class="text-muted mt-12">Step-by-step guides coming soon.</p>
@@ -370,8 +316,9 @@
         <!-- ════════════════════════════════════════════════════════════════
              SECTION: CONTACT
         ════════════════════════════════════════════════════════════════ -->
-        <section class="section" id="contact" hidden aria-label="Contact">
+        <section class="section section--contained" id="contact" hidden aria-label="Contact">
           <h1 class="page-title">Contact</h1>
+          <p class="contact-intro">If you have any questions, run into any issues, or just want to say hello, feel free to reach out using the form below. I'll do my best to get back to you when I can.</p>
           <form class="contact-form" id="contact-form" action="https://formspree.io/f/xojrronz" method="POST">
             <div class="field"><label for="contact-name">Name</label><input type="text" class="input" id="contact-name" name="name" required autocomplete="name" /></div>
             <div class="field"><label for="contact-email">Email</label><input type="email" class="input" id="contact-email" name="email" required autocomplete="email" /></div>
@@ -389,7 +336,7 @@
         <!-- ════════════════════════════════════════════════════════════════
              SECTION: DONATE
         ════════════════════════════════════════════════════════════════ -->
-        <section class="section" id="donate" hidden aria-label="Donate">
+        <section class="section section--contained" id="donate" hidden aria-label="Donate">
           <h1 class="page-title">Support This Tool</h1>
           <div class="donate-intro">
             <p>Loop Bolus Calculator is, and always will be, completely free to use.</p>
@@ -416,10 +363,9 @@
         <!-- ════════════════════════════════════════════════════════════════
              SECTION: SETTINGS
         ════════════════════════════════════════════════════════════════ -->
-        <section class="section" id="settings" hidden aria-label="Settings">
+        <section class="section section--contained" id="settings" hidden aria-label="Settings">
           <h1 class="page-title">Settings</h1>
 
-          <!-- Google Account -->
           <div class="settings-section">
             <h2>Google Account</h2>
             <div id="connect-block">
@@ -438,7 +384,6 @@
 
           <hr class="divider" />
 
-          <!-- Drive Config -->
           <div class="settings-section">
             <h2>Google Drive Setup</h2>
             <div class="field">
@@ -453,7 +398,6 @@
 
           <hr class="divider" />
 
-          <!-- Nightscout -->
           <div class="settings-section">
             <h2>Nightscout</h2>
             <div class="field"><label for="ns-url">Nightscout URL</label><input type="url" class="input" id="ns-url" placeholder="https://yoursite.herokuapp.com" autocomplete="off" /></div>
@@ -470,7 +414,6 @@
 
           <hr class="divider" />
 
-          <!-- Dexcom -->
           <div class="settings-section">
             <h2>Dexcom Share</h2>
             <div class="field"><label for="dex-user">Dexcom Username</label><input type="text" class="input" id="dex-user" autocomplete="off" /></div>
@@ -493,17 +436,16 @@
 
           <hr class="divider" />
 
-          <!-- Display -->
           <div class="settings-section">
             <h2>Display</h2>
+            <div class="field">
+              <label for="units-select">Blood glucose units</label>
+              <select class="input" id="units-select">
+                <option value="mmol">mmol/L</option>
+                <option value="mgdl">mg/dL</option>
+              </select>
+            </div>
             <div class="input-row">
-              <div class="field">
-                <label for="units-select">BG Units</label>
-                <select class="input" id="units-select">
-                  <option value="mmol">mmol/L</option>
-                  <option value="mgdl">mg/dL</option>
-                </select>
-              </div>
               <div class="field">
                 <label for="mode-select">Mode</label>
                 <select class="input" id="mode-select">
@@ -512,22 +454,21 @@
                   <option value="light">Light</option>
                 </select>
               </div>
-            </div>
-            <div class="field">
-              <label for="color-theme-select">Colour Theme</label>
-              <select class="input" id="color-theme-select">
-                <option value="green">Default (Green)</option>
-                <option value="amber">Amber</option>
-                <option value="purple">Purple</option>
-                <option value="slate">Slate</option>
-                <option value="rose">Rose</option>
-              </select>
+              <div class="field">
+                <label for="color-theme-select">Colour Theme</label>
+                <select class="input" id="color-theme-select">
+                  <option value="green">Default (Green)</option>
+                  <option value="amber">Amber</option>
+                  <option value="purple">Purple</option>
+                  <option value="slate">Slate</option>
+                  <option value="rose">Rose</option>
+                </select>
+              </div>
             </div>
           </div>
 
           <hr class="divider" />
 
-          <!-- Disclaimer -->
           <div class="settings-section">
             <h2>Data Disclaimer</h2>
             <div class="disclaimer">
@@ -540,24 +481,18 @@
       </main>
     </div><!-- /calculator-content -->
 
-    <!-- ── Recipe Builder Panel (right side) ────────────────────────────── -->
+    <!-- ── Recipe Builder Panel ──────────────────────────────────────────── -->
     <aside class="recipe-panel" id="recipe-panel" hidden aria-label="Recipe Builder">
       <div class="recipe-panel__header">
         <span class="recipe-panel__title">Recipe Builder</span>
         <button class="btn btn--icon" id="close-recipe-btn" aria-label="Close recipe builder">×</button>
       </div>
-
-      <!-- Recipe name -->
       <div class="field">
         <label for="recipe-name-input">Recipe Name</label>
         <input type="text" class="input input--sm" id="recipe-name-input" placeholder="e.g. Caesar Salad" />
       </div>
-
-      <!-- Recipe tabs -->
       <div class="recipe-tabs" id="recipe-tabs"></div>
       <button class="btn btn--secondary btn--sm mb-8" id="new-recipe-btn">+ New Recipe</button>
-
-      <!-- Ingredient entry row -->
       <div class="recipe-section-label">Add Ingredient</div>
       <div class="recipe-entry-row">
         <div>
@@ -580,37 +515,20 @@
           <button class="btn btn--primary btn--sm" id="recipe-add-ingredient-btn">+</button>
         </div>
       </div>
-
-      <!-- Ingredient list -->
       <div class="recipe-section-label">Ingredients</div>
       <div style="overflow-x:auto">
         <table class="recipe-ingredient-table">
-          <thead>
-            <tr><th>Ingredient</th><th>CF</th><th>Weight (g)</th><th>Carbs (g)</th><th></th></tr>
-          </thead>
+          <thead><tr><th>Ingredient</th><th>CF</th><th>Weight (g)</th><th>Carbs (g)</th><th></th></tr></thead>
           <tbody id="recipe-ingredient-rows">
             <tr><td colspan="5" style="padding:12px;text-align:center;color:var(--text-2);font-size:.8rem">No ingredients yet</td></tr>
           </tbody>
         </table>
       </div>
-
-      <!-- Totals & Composite CF -->
       <div class="recipe-totals">
-        <div class="recipe-totals__item">
-          <span class="recipe-totals__label">Total Weight</span>
-          <span class="recipe-totals__value" id="recipe-total-weight">0 g</span>
-        </div>
-        <div class="recipe-totals__item">
-          <span class="recipe-totals__label">Total Carbs</span>
-          <span class="recipe-totals__value" id="recipe-total-carbs">0 g</span>
-        </div>
-        <div class="recipe-totals__item">
-          <span class="recipe-totals__label">Composite CF</span>
-          <span class="recipe-totals__value recipe-composite-cf" id="recipe-composite-cf">—</span>
-        </div>
+        <div class="recipe-totals__item"><span class="recipe-totals__label">Total Weight</span><span class="recipe-totals__value" id="recipe-total-weight">0 g</span></div>
+        <div class="recipe-totals__item"><span class="recipe-totals__label">Total Carbs</span><span class="recipe-totals__value" id="recipe-total-carbs">0 g</span></div>
+        <div class="recipe-totals__item"><span class="recipe-totals__label">Composite CF</span><span class="recipe-totals__value recipe-composite-cf" id="recipe-composite-cf">—</span></div>
       </div>
-
-      <!-- Portion -->
       <div class="recipe-section-label">Portion Served</div>
       <div class="recipe-portion-row">
         <div class="field">
@@ -622,41 +540,37 @@
           <input type="number" class="input input--sm" id="recipe-portion-carbs" placeholder="g" min="0" step="0.1" />
         </div>
       </div>
-
       <button class="btn btn--primary btn--full" id="recipe-add-to-meal-btn">Add to Meal</button>
     </aside>
 
   </div><!-- /calculator-layout -->
 
-  <!-- ── Bottom Navigation (mobile) ────────────────────────────────────── -->
   <nav class="bottom-nav" aria-label="Main navigation">
-    <button class="nav-btn active" data-nav="calculator" aria-label="Calculator">
+    <button class="nav-btn active" data-nav="calculator">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h2m4 0h2M8 12h2m4 0h2M8 16h2m4 0h2"/></svg>
       Calc
     </button>
-    <button class="nav-btn" data-nav="log" aria-label="Today's Log">
+    <button class="nav-btn" data-nav="log">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       Log
     </button>
-    <button class="nav-btn" data-nav="how-to" aria-label="How To">
+    <button class="nav-btn" data-nav="how-to">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
       How-To
     </button>
-    <button class="nav-btn" data-nav="settings" aria-label="Settings">
+    <button class="nav-btn" data-nav="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Settings
     </button>
   </nav>
 
   <script>
-    // Lightweight navigate shim for inline onclick before module loads
     function navigate(id) {
       document.querySelectorAll('.section').forEach(s => s.hidden = true);
       const t = document.getElementById(id); if (t) t.hidden = false;
       document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === id));
       window.location.hash = '#' + id;
     }
-    // Show desktop nav immediately on wide screens
     if (window.innerWidth >= 1024) document.querySelector('.desktop-nav').style.display = 'flex';
   </script>
 
