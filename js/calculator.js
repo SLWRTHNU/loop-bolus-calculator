@@ -3,6 +3,16 @@ export function calcNetCarbs(weightG, carbFactor) {
   return Math.round(weightG * carbFactor * 10) / 10;
 }
 
+export function calcWeightFromCarbs(carbs, carbFactor) {
+  if (!carbs || !carbFactor) return 0;
+  return Math.round((carbs / carbFactor) * 10) / 10;
+}
+
+export function calcCompositeCF(totalCarbs, totalWeight) {
+  if (!totalWeight || totalWeight === 0) return 0;
+  return Math.round((totalCarbs / totalWeight) * 10000) / 10000;
+}
+
 export function calcBolus({ foods, currentBG, targetBG, icr, isf, iob }) {
   const totalNetCarbs = foods.reduce((sum, f) => sum + calcNetCarbs(f.weightG, f.carbFactor), 0);
 
