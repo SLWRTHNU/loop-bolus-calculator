@@ -165,6 +165,15 @@ a:hover { text-decoration: underline; }
 .tools-dropdown button:last-child { border-bottom: none; }
 .tools-dropdown button:hover { background: var(--bg-3); color: var(--accent); }
 
+.tools-dropdown-note {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  padding: 8px 16px 4px;
+  font-style: italic;
+}
+
+.entry-cf-input { color: var(--text-2); }
+
 /* ── Bottom Nav (mobile) ─────────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed;
@@ -256,12 +265,12 @@ a:hover { text-decoration: underline; }
   border-color: var(--accent);
 }
 
-/* ── Four-column top grid ────────────────────────────────────────────────── */
+/* ── Three-column top grid ───────────────────────────────────────────────── */
 .top-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
@@ -363,6 +372,26 @@ a:hover { text-decoration: underline; }
 .bg-timestamp { font-size: 0.75rem; color: var(--text-2); margin-top: 4px; }
 
 /* ── Timing Card ─────────────────────────────────────────────────────────── */
+.timing-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.timing-bar__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-2);
+  flex-shrink: 0;
+  min-width: 46px;
+}
+
+.timing-bar .timing-row-inline { margin-bottom: 0; flex-shrink: 0; }
+.timing-bar .minutes-between { margin-top: 0; }
+
 .timing-row-inline {
   display: flex;
   align-items: center;
@@ -886,16 +915,16 @@ a:hover { text-decoration: underline; }
   .recipe-open .calculator-content { /* no special shrink needed; recipe panel is aside */ }
 }
 
-/* ── Tablet (768–1199px): 2-column top grid ──────────────────────────────── */
-@media (max-width: 1199px) and (min-width: 768px) {
+/* ── Tablet (768–1023px): 2-column top grid ──────────────────────────────── */
+@media (max-width: 1023px) and (min-width: 600px) {
   .top-grid { grid-template-columns: 1fr 1fr; }
+  .timing-bar { gap: 12px; }
 }
 
-/* ── Mobile fallback (< 768px) stacks everything ────────────────────────── */
-@media (max-width: 767px) {
+/* ── Mobile fallback (< 600px) stacks everything ────────────────────────── */
+@media (max-width: 599px) {
   .top-grid { grid-template-columns: 1fr; }
-  .food-entry-row { grid-template-columns: 1fr 1fr; }
-  .food-entry-row > *:last-child { grid-column: 1 / -1; }
+  .timing-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
   .recipe-panel {
     position: fixed; top: 56px; right: 0; height: calc(100dvh - 56px);
     z-index: 300; box-shadow: var(--shadow);

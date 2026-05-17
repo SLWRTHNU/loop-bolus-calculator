@@ -52,6 +52,7 @@
           Tools ▾
         </button>
         <div class="tools-dropdown" id="tools-dropdown" hidden role="menu">
+          <p class="tools-dropdown-note" id="guest-export-note" hidden>Exports download locally in guest mode</p>
           <button id="tools-export-current" role="menuitem">Export &amp; Clear Current Sheet</button>
           <button id="tools-export-all" role="menuitem">Export &amp; Clear All Sheets (Today)</button>
           <button id="tools-recipe" role="menuitem">Recipe Builder</button>
@@ -64,7 +65,7 @@
   <!-- ── Guest Mode Banner ────────────────────────────────────────────────── -->
   <div class="drive-banner" id="drive-banner">
     <div class="drive-banner__text">
-      <strong>Guest mode.</strong> Connect Google Drive to save settings, personal foods, and export daily logs.
+      <strong>You're in guest mode.</strong> Any data you enter will be lost when you refresh or leave the page. Connect Google Drive to save your settings, food list, and export daily logs.
     </div>
     <button class="btn btn--primary btn--sm" onclick="document.querySelector('[data-nav=settings]').click()">Connect</button>
   </div>
@@ -80,15 +81,39 @@
 
           <div class="meal-tabs" id="meal-tabs" role="tablist" aria-label="Meal selection"></div>
 
-          <!-- Four-column top row -->
+          <!-- Three-column top row -->
           <div class="top-grid">
 
-            <!-- Card 1: Blood Glucose & Insulin (compact inline rows) -->
+            <!-- Card 1: Food Entry -->
+            <div class="card food-entry-card">
+              <div class="card__title">Food Entry</div>
+              <div class="inline-field">
+                <label class="inline-label" for="entry-food-search">Food</label>
+                <input type="text" class="input input--sm" id="entry-food-search" placeholder="Search food…" autocomplete="off" />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label" for="entry-cf">CF</label>
+                <input type="number" class="input input--sm entry-cf-input" id="entry-cf" placeholder="—" readonly tabindex="-1" />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label" for="entry-weight">Weight</label>
+                <input type="number" class="input input--sm" id="entry-weight" placeholder="g" min="0" step="1" aria-label="Weight in grams" />
+                <span class="inline-unit">g</span>
+              </div>
+              <div class="inline-field">
+                <label class="inline-label" for="entry-carbs">Carbs</label>
+                <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" aria-label="Carbs in grams" />
+                <span class="inline-unit">g</span>
+              </div>
+              <button class="btn btn--primary btn--full" id="add-food-btn" style="margin-top:12px">Add to Meal</button>
+            </div>
+
+            <!-- Card 2: Factors -->
             <div class="card" id="bg-panel">
-              <div class="card__title">Blood Glucose &amp; Insulin</div>
+              <div class="card__title">Factors</div>
 
               <div class="inline-field">
-                <label class="inline-label">Current BG</label>
+                <label class="inline-label" for="bg-value">Current BG</label>
                 <input type="number" class="input input--sm" id="bg-value" placeholder="—" step="0.1" min="0" aria-label="Current blood glucose" />
                 <span class="inline-unit bg-unit-label">mmol/L</span>
                 <button class="btn btn--icon btn--sm fetch-btn" id="fetch-bg-btn" hidden title="Refresh from connected source">↻</button>
@@ -96,41 +121,21 @@
               <div class="bg-timestamp" id="bg-timestamp" hidden></div>
 
               <div class="inline-field">
-                <label class="inline-label">IOB</label>
-                <input type="number" class="input input--sm" id="iob-value" placeholder="—" step="0.01" min="0" aria-label="Insulin on board" />
-                <span class="inline-unit">U</span>
-                <button class="btn btn--icon btn--sm fetch-btn" id="fetch-iob-btn" hidden title="Refresh from Nightscout">↻</button>
+                <label class="inline-label" for="target-bg-input">Target BG</label>
+                <input type="number" class="input input--sm" id="target-bg-input" placeholder="—" min="0" step="0.1" aria-label="Target blood glucose" />
+                <span class="inline-unit bg-unit-label">mmol/L</span>
               </div>
 
               <div class="inline-field">
-                <label class="inline-label">COB</label>
-                <input type="number" class="input input--sm" id="cob-value" placeholder="—" step="1" min="0" aria-label="Carbs on board" />
-                <span class="inline-unit">g</span>
-                <button class="btn btn--icon btn--sm fetch-btn" id="fetch-cob-btn" hidden title="Refresh from Nightscout">↻</button>
-              </div>
-              <p class="inline-note">COB is informational only</p>
-            </div>
-
-            <!-- Card 2: Meal Settings (compact inline rows) -->
-            <div class="card" id="meal-settings-card">
-              <div class="card__title">Meal Settings</div>
-
-              <div class="inline-field">
-                <label class="inline-label">ICR</label>
+                <label class="inline-label" for="icr-input">ICR</label>
                 <input type="number" class="input input--sm" id="icr-input" placeholder="—" min="1" step="0.5" aria-label="Insulin to carb ratio" />
                 <span class="inline-unit">g / U</span>
               </div>
 
               <div class="inline-field">
-                <label class="inline-label" id="isf-label">ISF</label>
+                <label class="inline-label" for="isf-input">ISF</label>
                 <input type="number" class="input input--sm" id="isf-input" placeholder="—" min="0.1" step="0.1" aria-label="Insulin sensitivity factor" />
                 <span class="inline-unit isf-unit-label">mmol/L per U</span>
-              </div>
-
-              <div class="inline-field">
-                <label class="inline-label">Target BG</label>
-                <input type="number" class="input input--sm" id="target-bg-input" placeholder="—" min="0" step="0.1" aria-label="Target blood glucose" />
-                <span class="inline-unit bg-unit-label">mmol/L</span>
               </div>
 
               <button class="btn btn--secondary btn--sm" id="fetch-profile-btn" hidden style="margin-top:10px">
@@ -138,31 +143,9 @@
               </button>
             </div>
 
-            <!-- Card 3: Timing -->
-            <div class="card" id="timing-card">
-              <div class="card__title">Timing</div>
-
-              <div class="timing-row-inline">
-                <label class="timing-inline-label">Bolus given at</label>
-                <input type="time" class="input input--sm" id="bolus-time-input" aria-label="Bolus given at time" />
-                <button class="set-btn" id="bolus-set-btn" title="Click to record current time" aria-label="Set bolus time to now">Set</button>
-              </div>
-
-              <div class="timing-row-inline">
-                <label class="timing-inline-label">Meal started at</label>
-                <input type="time" class="input input--sm" id="meal-time-input" aria-label="Meal started at time" />
-                <button class="set-btn" id="meal-set-btn" title="Click to record current time" aria-label="Set meal time to now">Set</button>
-              </div>
-
-              <div class="minutes-between" id="minutes-between" hidden>
-                <span class="minutes-between__label">Minutes between</span>
-                <span class="minutes-between__value" id="minutes-between-value">—</span>
-              </div>
-            </div>
-
-            <!-- Card 4: Bolus Summary -->
-            <div class="card bolus-summary" role="region" aria-label="Bolus summary" aria-live="polite">
-              <div class="card__title">Bolus Summary</div>
+            <!-- Card 3: Insulin Dose -->
+            <div class="card bolus-summary-card" role="region" aria-label="Bolus summary" aria-live="polite">
+              <div class="card__title">Insulin Dose</div>
               <div class="bolus-total-display">
                 <span class="bolus-total-label">Total Bolus</span>
                 <div>
@@ -188,38 +171,36 @@
                   <span class="bolus-line__value" id="summary-iob">−0.00 U</span>
                 </div>
               </div>
-              <button class="btn btn--primary btn--full bolus-given-btn" id="bolus-given-btn" style="margin-top:12px">
+              <button class="btn btn--primary btn--full" id="bolus-given-btn" style="margin-top:16px">
                 Bolus Given
               </button>
             </div>
           </div><!-- /top-grid -->
 
-          <!-- Food Builder (full width) -->
-          <div class="card food-builder-card">
-            <div class="card__title">Food Builder</div>
-
-            <div class="food-entry-row">
-              <div>
-                <div class="food-entry-label">Food</div>
-                <input type="text" class="input input--sm" id="entry-food-search" placeholder="Search food…" autocomplete="off" />
+          <!-- Timing (full-width compact bar) -->
+          <div class="card timing-card" id="timing-card" style="margin-top:16px">
+            <div class="timing-bar">
+              <span class="timing-bar__label">Timing</span>
+              <div class="timing-row-inline">
+                <label class="timing-inline-label">Bolus given at</label>
+                <input type="time" class="input input--sm" id="bolus-time-input" aria-label="Bolus given at time" />
+                <button class="set-btn" id="bolus-set-btn" title="Click to set current time" aria-label="Set bolus time to now">Set</button>
               </div>
-              <div>
-                <div class="food-entry-label">CF</div>
-                <input type="number" class="input input--sm" id="entry-cf" placeholder="—" readonly tabindex="-1" />
+              <div class="timing-row-inline">
+                <label class="timing-inline-label">Meal started at</label>
+                <input type="time" class="input input--sm" id="meal-time-input" aria-label="Meal started at time" />
+                <button class="set-btn" id="meal-set-btn" title="Click to set current time" aria-label="Set meal time to now">Set</button>
               </div>
-              <div>
-                <div class="food-entry-label">Weight (g)</div>
-                <input type="number" class="input input--sm" id="entry-weight" placeholder="g" min="0" step="1" />
-              </div>
-              <div>
-                <div class="food-entry-label">Carbs (g)</div>
-                <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" />
-              </div>
-              <div style="display:flex;align-items:flex-end">
-                <button class="btn btn--primary btn--sm" id="add-food-btn">Add to Meal</button>
+              <div class="minutes-between" id="minutes-between" hidden>
+                <span class="minutes-between__label">Minutes between</span>
+                <span class="minutes-between__value" id="minutes-between-value">—</span>
               </div>
             </div>
+          </div>
 
+          <!-- Food List (full width) -->
+          <div class="card food-list-card" style="margin-top:16px">
+            <div class="card__title">Food List</div>
             <div class="food-table-wrapper">
               <table class="food-table">
                 <thead>
@@ -246,13 +227,13 @@
           </div>
 
           <!-- Notes (full width) -->
-          <div class="card notes-card">
+          <div class="card notes-card" style="margin-top:16px">
             <div class="card__title">Notes</div>
             <textarea class="input" id="meal-notes" rows="3" placeholder="Optional notes for this meal…" style="resize:vertical"></textarea>
           </div>
 
           <!-- Post-Meal BG Tracker (hidden by default) -->
-          <div class="card post-tracker-card" id="post-meal-tracker" hidden aria-label="Post-meal BG tracker">
+          <div class="card post-tracker-card" id="post-meal-tracker" hidden aria-label="Post-meal BG tracker" style="margin-top:16px">
             <div class="card__title">
               Post-Meal BG Tracker
               <button class="btn btn--icon btn--sm" id="close-tracker-btn" aria-label="Close tracker">×</button>
@@ -280,7 +261,7 @@
             <button class="btn btn--secondary btn--sm mt-8" id="add-bg-row-btn">+ Add Reading</button>
           </div>
 
-          <div class="disclaimer">
+          <div class="disclaimer" style="margin-top:16px">
             <strong>Nutritional data sourced from Health Canada's <em>Nutrient Value of Some Common Foods</em> (2008).</strong>
             Carb factors are approximate and derived from published values. Always verify with a qualified healthcare professional.
             The developers make no warranties regarding nutritional data accuracy and accept no liability for decisions made based on this calculator.

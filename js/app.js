@@ -26,7 +26,6 @@ let state = {
   bolusLockedAt: {},
   mealLockedAt: {},
   bolusTimerID: null,
-  entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 },
   recipes: [],
   activeRecipeIndex: 0
 };
@@ -34,7 +33,8 @@ let state = {
 MEAL_SLUGS.forEach(slug => {
   state.meals[slug] = {
     foods: [], currentBG: '', iob: '', cob: '',
-    postBgReadings: [], notes: '', bgTimestamp: null, bgTrend: null
+    postBgReadings: [], notes: '', bgTimestamp: null, bgTrend: null,
+    entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 }
   };
   state.bolusLockedAt[slug] = null;
   state.mealLockedAt[slug]  = null;
@@ -144,6 +144,13 @@ function renderAll() {
   renderUnitsLabels();
   renderLogSection();
   setVal('meal-notes', getCurrentMeal().notes || '');
+  renderPostMealTracker();
+  // Restore per-tab entry food DOM
+  const ef = getCurrentMeal().entryFood;
+  const searchInput = document.getElementById('entry-food-search'); if (searchInput) searchInput.value = ef.name || '';
+  const cfInput     = document.getElementById('entry-cf');          if (cfInput)     cfInput.value     = ef.carbFactor != null ? ef.carbFactor : '';
+  const weightInput = document.getElementById('entry-weight');      if (weightInput) weightInput.value = ef.weightG || '';
+  const carbsInput  = document.getElementById('entry-carbs');       if (carbsInput)  carbsInput.value  = ef.carbsG || '';
 }
 
 function renderMealTabs() {
@@ -159,8 +166,6 @@ function renderMealTabs() {
     btn.addEventListener('click', () => {
       state.activeMeal = slug;
       clearBolusTimer();
-      state.entryFood = { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 };
-      ['entry-food-search','entry-cf','entry-weight','entry-carbs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       renderAll();
       startBolusTimerIfLocked();
     });
@@ -203,8 +208,8 @@ function renderTimingCard() {
 
   const bolusInput = document.getElementById('bolus-time-input');
   const mealInput  = document.getElementById('meal-time-input');
-  if (bolusSet && bolusInput && document.activeElement !== bolusInput) bolusInput.value = hhmm(bolusSet);
-  if (mealSet  && mealInput  && document.activeElement !== mealInput)  mealInput.value  = hhmm(mealSet);
+  if (bolusInput && document.activeElement !== bolusInput) bolusInput.value = bolusSet ? hhmm(bolusSet) : '';
+  if (mealInput  && document.activeElement !== mealInput)  mealInput.value  = mealSet  ? hhmm(mealSet)  : '';
 
   const mbEl    = document.getElementById('minutes-between');
   const mbValue = document.getElementById('minutes-between-value');
@@ -299,43 +304,46 @@ function setupFoodEntryRow() {
 
   const debouncedSearch = debounce((query, el) => {
     performFoodSearch(query, el, food => {
-      state.entryFood.name = food.name; state.entryFood.carbFactor = food.carbFactor;
-      state.entryFood.absorptionRate = food.absorptionRate;
+      const ef = getCurrentMeal().entryFood;
+      ef.name = food.name; ef.carbFactor = food.carbFactor; ef.absorptionRate = food.absorptionRate;
       if (searchInput) searchInput.value = food.name;
-      if (cfInput) cfInput.value = food.carbFactor || '';
-      if (state.entryFood.weightG) {
-        const c = calcNetCarbs(parseFloat(state.entryFood.weightG), food.carbFactor);
-        state.entryFood.carbsG = c; if (carbsInput) carbsInput.value = c;
-      } else if (state.entryFood.carbsG) {
-        const w = calcWeightFromCarbs(parseFloat(state.entryFood.carbsG), food.carbFactor);
-        state.entryFood.weightG = w; if (weightInput) weightInput.value = w;
+      if (cfInput) cfInput.value = food.carbFactor != null ? food.carbFactor : '';
+      if (ef.weightG) {
+        const c = calcNetCarbs(parseFloat(ef.weightG), food.carbFactor);
+        ef.carbsG = c; if (carbsInput) carbsInput.value = c;
+      } else if (ef.carbsG) {
+        const w = calcWeightFromCarbs(parseFloat(ef.carbsG), food.carbFactor);
+        ef.weightG = w; if (weightInput) weightInput.value = w;
       }
     });
   }, 300);
 
   searchInput?.addEventListener('input', e => {
-    state.entryFood.name = e.target.value; state.entryFood.carbFactor = null;
+    const ef = getCurrentMeal().entryFood;
+    ef.name = e.target.value; ef.carbFactor = null;
     if (cfInput) cfInput.value = ''; debouncedSearch(e.target.value, e.target);
   });
   searchInput?.addEventListener('blur', () => { setTimeout(() => { document.querySelector('.food-dropdown')?.remove(); }, 150); });
 
   weightInput?.addEventListener('input', e => {
-    const w = parseFloat(e.target.value) || 0; state.entryFood.weightG = w || '';
-    if (state.entryFood.carbFactor && w) { const c = calcNetCarbs(w, state.entryFood.carbFactor); state.entryFood.carbsG = c; if (carbsInput) carbsInput.value = c; }
+    const ef = getCurrentMeal().entryFood;
+    const w = parseFloat(e.target.value) || 0; ef.weightG = w || '';
+    if (ef.carbFactor && w) { const c = calcNetCarbs(w, ef.carbFactor); ef.carbsG = c; if (carbsInput) carbsInput.value = c; }
   });
 
   carbsInput?.addEventListener('input', e => {
-    const c = parseFloat(e.target.value) || 0; state.entryFood.carbsG = c || '';
-    if (state.entryFood.carbFactor && c) { const w = calcWeightFromCarbs(c, state.entryFood.carbFactor); state.entryFood.weightG = w; if (weightInput) weightInput.value = w; }
+    const ef = getCurrentMeal().entryFood;
+    const c = parseFloat(e.target.value) || 0; ef.carbsG = c || '';
+    if (ef.carbFactor && c) { const w = calcWeightFromCarbs(c, ef.carbFactor); ef.weightG = w; if (weightInput) weightInput.value = w; }
   });
 
   addBtn?.addEventListener('click', () => {
-    const ef = state.entryFood;
+    const ef = getCurrentMeal().entryFood;
     if (!ef.name) { showToast('Search and select a food first', 'error'); return; }
     const w = parseFloat(ef.weightG) || 0, c = parseFloat(ef.carbsG) || 0;
     if (!w && !c) { showToast('Enter weight or carbs', 'error'); return; }
     getCurrentMeal().foods.push({ name: ef.name, carbFactor: ef.carbFactor, weightG: w || calcWeightFromCarbs(c, ef.carbFactor), absorptionRate: ef.absorptionRate || 3.0 });
-    state.entryFood = { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 };
+    getCurrentMeal().entryFood = { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 };
     if (searchInput) searchInput.value = '';
     if (cfInput)     cfInput.value = '';
     if (weightInput) weightInput.value = '';
@@ -591,7 +599,11 @@ function setupNavigation() {
 // ─── TOOLS MENU ──────────────────────────────────────────────────────────────
 
 function setupToolsMenu() {
-  document.getElementById('tools-btn')?.addEventListener('click', e => { e.stopPropagation(); toggleToolsDropdown(); });
+  document.getElementById('tools-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    const note = document.getElementById('guest-export-note'); if (note) note.hidden = isConnected();
+    toggleToolsDropdown();
+  });
   document.getElementById('tools-export-current')?.addEventListener('click', () => { document.getElementById('tools-dropdown').hidden = true; exportAndClearCurrentSheet(); });
   document.getElementById('tools-export-all')?.addEventListener('click',     () => { document.getElementById('tools-dropdown').hidden = true; exportAndClearAllSheets(); });
   document.getElementById('tools-recipe')?.addEventListener('click', () => {
@@ -610,7 +622,8 @@ function setupToolsMenu() {
 
 function handleBolusGiven() {
   const slug = state.activeMeal;
-  const now  = new Date();
+  if (state.bolusLockedAt[slug] && !confirm('Update bolus time to now?')) return;
+  const now = new Date();
   state.bolusLockedAt[slug] = now;
   const input = document.getElementById('bolus-time-input');
   if (input) input.value = hhmm(now);
@@ -620,6 +633,27 @@ function handleBolusGiven() {
 
 // ─── EXPORT ──────────────────────────────────────────────────────────────────
 
+function downloadLocalCSV(entries, dateStr) {
+  const headers = ['Date', 'Meal', 'Food', 'Carb Factor', 'Weight (g)', 'Net Carbs (g)', 'Notes'];
+  const rows = entries.map(e => [e.date, e.meal, e.food, e.carbFactor ?? '', e.weightG, e.netCarbs, e.notes || '']);
+  const csv = [headers, ...rows].map(row =>
+    row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+
+  const date = new Date(dateStr + 'T12:00:00');
+  const monthName = date.toLocaleString('en-CA', { month: 'long' });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const filename = `${monthName} ${day} - ${year}.csv`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('File ready — check your downloads', 'success');
+}
+
 function buildLogEntries(slug, meal) {
   return meal.foods.filter(f => f.name && f.weightG).map(f => ({
     date: todayStr(), meal: MEAL_LABELS[slug], food: f.name, carbFactor: f.carbFactor,
@@ -628,9 +662,13 @@ function buildLogEntries(slug, meal) {
 }
 
 async function exportAndClearCurrentSheet() {
-  if (!isConnected()) { showToast('Connect Google Drive first', 'error'); return; }
   const slug = state.activeMeal; const entries = buildLogEntries(slug, state.meals[slug]);
   if (!entries.length) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
+  if (!isConnected()) {
+    downloadLocalCSV(entries, todayStr());
+    state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
+    return;
+  }
   try {
     showToast('Exporting…', 'info'); const dateStr = todayStr();
     await exportLogToSheet(dateStr, entries); storage.set('last_export_date', dateStr);
@@ -640,9 +678,13 @@ async function exportAndClearCurrentSheet() {
 }
 
 async function exportAndClearAllSheets() {
-  if (!isConnected()) { showToast('Connect Google Drive first', 'error'); return; }
   const allEntries = []; MEAL_SLUGS.forEach(slug => { allEntries.push(...buildLogEntries(slug, state.meals[slug])); });
   if (!allEntries.length) { showToast('No foods to export', 'error'); return; }
+  if (!isConnected()) {
+    downloadLocalCSV(allEntries, todayStr());
+    MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
+    return;
+  }
   try {
     showToast('Exporting all meals…', 'info'); const dateStr = todayStr();
     await exportLogToSheet(dateStr, allEntries); storage.set('last_export_date', dateStr);
