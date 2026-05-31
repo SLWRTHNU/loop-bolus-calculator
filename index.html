@@ -52,7 +52,7 @@
           Tools ▾
         </button>
         <div class="tools-dropdown" id="tools-dropdown" hidden role="menu">
-          <p class="tools-dropdown-note" id="guest-export-note" hidden>Exports download locally in guest mode</p>
+          <p class="tools-dropdown-note" id="guest-export-note" hidden>Exports will download as a file while in guest mode.</p>
           <button id="tools-export-current" role="menuitem">Export &amp; Clear Current Sheet</button>
           <button id="tools-export-all" role="menuitem">Export &amp; Clear All Sheets (Today)</button>
           <button id="tools-recipe" role="menuitem">Recipe Builder</button>
@@ -65,7 +65,7 @@
   <!-- ── Guest Mode Banner ────────────────────────────────────────────────── -->
   <div class="drive-banner" id="drive-banner">
     <div class="drive-banner__text">
-      <strong>You're in guest mode.</strong> Any data you enter will be lost when you refresh or leave the page. Connect Google Drive to save your settings, food list, and export daily logs.
+      <strong>You're in guest mode</strong> — any data you enter will be lost when you refresh or leave this page. Connect Google Drive to save your settings and export daily logs.
     </div>
     <button class="btn btn--primary btn--sm" onclick="document.querySelector('[data-nav=settings]').click()">Connect</button>
   </div>
@@ -81,11 +81,11 @@
 
           <div class="meal-tabs" id="meal-tabs" role="tablist" aria-label="Meal selection"></div>
 
-          <!-- Three-column top row -->
-          <div class="top-grid">
+          <!-- Calculator grid: 1fr 1fr 240px × auto auto -->
+          <div class="calc-grid">
 
-            <!-- Card 1: Food Entry -->
-            <div class="card food-entry-card">
+            <!-- Card 1: Food Entry (col 1, row 1) -->
+            <div class="card food-entry-card" style="grid-column:1;grid-row:1">
               <div class="card__title">Food Entry</div>
               <div class="inline-field">
                 <label class="inline-label" for="entry-food-search">Food</label>
@@ -105,11 +105,39 @@
                 <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" aria-label="Carbs in grams" />
                 <span class="inline-unit">g</span>
               </div>
-              <button class="btn btn--primary btn--full" id="add-food-btn" style="margin-top:12px">Add to Meal</button>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <button class="btn btn--primary btn--full" id="add-food-btn">+ Add to Meal</button>
+                <button class="btn btn--secondary btn--sm" id="custom-food-toggle-btn">+ Custom</button>
+              </div>
+              <!-- Inline custom food panel -->
+              <div class="custom-food-panel" id="custom-food-panel" hidden>
+                <div class="inline-field">
+                  <label class="inline-label" for="custom-name">Name</label>
+                  <input type="text" class="input input--sm" id="custom-name" placeholder="Food name" />
+                </div>
+                <div class="inline-field">
+                  <label class="inline-label" for="custom-cf">CF</label>
+                  <input type="number" class="input input--sm" id="custom-cf" placeholder="e.g. 0.5" step="0.001" min="0" />
+                </div>
+                <div class="inline-field">
+                  <label class="inline-label" for="custom-weight">Weight</label>
+                  <input type="number" class="input input--sm" id="custom-weight" placeholder="g" min="0" step="1" aria-label="Custom weight in grams" />
+                  <span class="inline-unit">g</span>
+                </div>
+                <div class="inline-field">
+                  <label class="inline-label" for="custom-carbs">Carbs</label>
+                  <input type="number" class="input input--sm" id="custom-carbs" placeholder="g" min="0" step="0.1" aria-label="Custom carbs in grams" />
+                  <span class="inline-unit">g</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button class="btn btn--primary btn--sm btn--full" id="custom-add-btn">+ Add to Meal</button>
+                  <button class="btn btn--secondary btn--sm" id="custom-cancel-btn">Cancel</button>
+                </div>
+              </div>
             </div>
 
-            <!-- Card 2: Factors -->
-            <div class="card" id="bg-panel">
+            <!-- Card 2: Factors (col 2, row 1) -->
+            <div class="card" id="bg-panel" style="grid-column:2;grid-row:1">
               <div class="card__title">Factors</div>
 
               <div class="inline-field">
@@ -143,8 +171,8 @@
               </button>
             </div>
 
-            <!-- Card 3: Insulin Dose -->
-            <div class="card bolus-summary-card" role="region" aria-label="Bolus summary" aria-live="polite">
+            <!-- Card 3: Insulin Dose (col 3, rows 1–2) -->
+            <div class="card bolus-summary-card" style="grid-column:3;grid-row:1/3" role="region" aria-label="Bolus summary" aria-live="polite">
               <div class="card__title">Insulin Dose</div>
               <div class="bolus-total-display">
                 <span class="bolus-total-label">Total Bolus</span>
@@ -171,32 +199,36 @@
                   <span class="bolus-line__value" id="summary-iob">−0.00 U</span>
                 </div>
               </div>
-              <button class="btn btn--primary btn--full" id="bolus-given-btn" style="margin-top:16px">
+              <button class="btn btn--primary btn--full" id="bolus-given-btn" style="margin-top:auto">
                 Bolus Given
               </button>
             </div>
-          </div><!-- /top-grid -->
 
-          <!-- Timing (full-width compact bar) -->
-          <div class="card timing-card" id="timing-card" style="margin-top:16px">
-            <div class="timing-bar">
-              <span class="timing-bar__label">Timing</span>
-              <div class="timing-row-inline">
-                <label class="timing-inline-label">Bolus given at</label>
-                <input type="time" class="input input--sm" id="bolus-time-input" aria-label="Bolus given at time" />
-                <button class="set-btn" id="bolus-set-btn" title="Click to set current time" aria-label="Set bolus time to now">Set</button>
-              </div>
-              <div class="timing-row-inline">
-                <label class="timing-inline-label">Meal started at</label>
-                <input type="time" class="input input--sm" id="meal-time-input" aria-label="Meal started at time" />
-                <button class="set-btn" id="meal-set-btn" title="Click to set current time" aria-label="Set meal time to now">Set</button>
-              </div>
-              <div class="minutes-between" id="minutes-between" hidden>
-                <span class="minutes-between__label">Minutes between</span>
-                <span class="minutes-between__value" id="minutes-between-value">—</span>
+            <!-- Timing (col 1–2, row 2) -->
+            <div class="card timing-card" id="timing-card" style="grid-column:1/3;grid-row:2">
+              <div class="timing-bar">
+                <span class="timing-bar__label">Timing</span>
+                <div class="timing-row-inline">
+                  <label class="timing-inline-label">Bolus given at</label>
+                  <input type="time" class="input input--sm" id="bolus-time-input" aria-label="Bolus given at time" />
+                  <button class="set-btn" id="bolus-set-btn" title="Click to set current time" aria-label="Set bolus time to now">Set</button>
+                  <span class="bolus-locked-indicator" id="bolus-locked-indicator" hidden>
+                    <span class="bolus-locked-dot"></span>locked
+                  </span>
+                </div>
+                <div class="timing-row-inline">
+                  <label class="timing-inline-label">Meal started at</label>
+                  <input type="time" class="input input--sm" id="meal-time-input" aria-label="Meal started at time" />
+                  <button class="set-btn" id="meal-set-btn" title="Click to set current time" aria-label="Set meal time to now">Set</button>
+                </div>
+                <div class="minutes-between" id="minutes-between" hidden>
+                  <span class="minutes-between__label">Minutes between</span>
+                  <span class="minutes-between__value" id="minutes-between-value">—</span>
+                </div>
               </div>
             </div>
-          </div>
+
+          </div><!-- /calc-grid -->
 
           <!-- Food List (full width) -->
           <div class="card food-list-card" style="margin-top:16px">

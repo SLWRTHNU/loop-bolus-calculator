@@ -71,6 +71,7 @@ async function init() {
   setupNavigation();
   setupTimingCard();
   setupFoodEntryRow();
+  setupCustomFoodPanel();
   setupToolsMenu();
   setupRecipePanel();
   setupPostMealTracker();
@@ -211,6 +212,9 @@ function renderTimingCard() {
   if (bolusInput && document.activeElement !== bolusInput) bolusInput.value = bolusSet ? hhmm(bolusSet) : '';
   if (mealInput  && document.activeElement !== mealInput)  mealInput.value  = mealSet  ? hhmm(mealSet)  : '';
 
+  const lockedEl = document.getElementById('bolus-locked-indicator');
+  if (lockedEl) lockedEl.hidden = !bolusSet;
+
   const mbEl    = document.getElementById('minutes-between');
   const mbValue = document.getElementById('minutes-between-value');
   if (bolusSet) {
@@ -348,6 +352,59 @@ function setupFoodEntryRow() {
     if (cfInput)     cfInput.value = '';
     if (weightInput) weightInput.value = '';
     if (carbsInput)  carbsInput.value = '';
+    renderFoodTable(); updateBolusLive();
+  });
+}
+
+// ─── CUSTOM FOOD PANEL ───────────────────────────────────────────────────────
+
+function setupCustomFoodPanel() {
+  const toggleBtn  = document.getElementById('custom-food-toggle-btn');
+  const panel      = document.getElementById('custom-food-panel');
+  const nameInput  = document.getElementById('custom-name');
+  const cfInput    = document.getElementById('custom-cf');
+  const weightInput = document.getElementById('custom-weight');
+  const carbsInput = document.getElementById('custom-carbs');
+  const addBtn     = document.getElementById('custom-add-btn');
+  const cancelBtn  = document.getElementById('custom-cancel-btn');
+
+  function clearPanel() {
+    [nameInput, cfInput, weightInput, carbsInput].forEach(el => { if (el) el.value = ''; });
+  }
+
+  toggleBtn?.addEventListener('click', () => { if (panel) panel.hidden = !panel.hidden; });
+
+  cancelBtn?.addEventListener('click', () => { if (panel) panel.hidden = true; clearPanel(); });
+
+  cfInput?.addEventListener('input', () => {
+    const cf = parseFloat(cfInput.value) || 0;
+    const w  = parseFloat(weightInput?.value) || 0;
+    if (cf && w && carbsInput) carbsInput.value = Math.round(w * cf * 10) / 10;
+  });
+
+  weightInput?.addEventListener('input', () => {
+    const cf = parseFloat(cfInput?.value) || 0;
+    const w  = parseFloat(weightInput.value) || 0;
+    if (cf && w && carbsInput) carbsInput.value = Math.round(w * cf * 10) / 10;
+  });
+
+  carbsInput?.addEventListener('input', () => {
+    const cf = parseFloat(cfInput?.value) || 0;
+    const c  = parseFloat(carbsInput.value) || 0;
+    if (cf && c && weightInput) weightInput.value = Math.round((c / cf) * 10) / 10;
+  });
+
+  addBtn?.addEventListener('click', () => {
+    const name = nameInput?.value?.trim();
+    if (!name) { showToast('Enter a food name', 'error'); return; }
+    const cf = parseFloat(cfInput?.value) || null;
+    const w  = parseFloat(weightInput?.value) || 0;
+    const c  = parseFloat(carbsInput?.value) || 0;
+    if (!w && !c) { showToast('Enter weight or carbs', 'error'); return; }
+    const weight = w || (cf ? Math.round((c / cf) * 10) / 10 : 0);
+    getCurrentMeal().foods.push({ name, carbFactor: cf, weightG: weight, absorptionRate: 3.0 });
+    clearPanel();
+    if (panel) panel.hidden = true;
     renderFoodTable(); updateBolusLive();
   });
 }
@@ -642,16 +699,16 @@ function downloadLocalCSV(entries, dateStr) {
 
   const date = new Date(dateStr + 'T12:00:00');
   const monthName = date.toLocaleString('en-CA', { month: 'long' });
-  const day = date.getDate();
+  const day = String(date.getDate()).padStart(2, '0');
   const year = date.getFullYear();
-  const filename = `${monthName} ${day} - ${year}.csv`;
+  const filename = `Loop Bolus - ${monthName} ${day} ${year}.csv`;
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename; document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
-  showToast('File ready — check your downloads', 'success');
+  showToast('Export downloaded', 'success');
 }
 
 function buildLogEntries(slug, meal) {

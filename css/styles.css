@@ -37,9 +37,12 @@
   --bg-3: #f1f5f9;
   --text: #0f172a;
   --text-2: #475569;
-  --border: #C8C8C0;
+  --border: #BEBEB4;
   --shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
+
+[data-mode="light"] .input { border-color: #C8C8BE; }
+[data-mode="light"] .food-table td { border-top-color: #D4D4CA; }
 
 /* ── Reset & Base ────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -265,12 +268,18 @@ a:hover { text-decoration: underline; }
   border-color: var(--accent);
 }
 
-/* ── Three-column top grid ───────────────────────────────────────────────── */
-.top-grid {
+/* ── Calculator grid: 1fr 1fr 240px × auto auto ──────────────────────────── */
+.calc-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr 240px;
+  grid-template-rows: auto auto;
   gap: 16px;
   margin-bottom: 0;
+}
+
+.bolus-summary-card {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
@@ -445,6 +454,32 @@ a:hover { text-decoration: underline; }
   margin-left: auto;
 }
 
+/* ── Bolus Locked Indicator ──────────────────────────────────────────────── */
+.bolus-locked-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.bolus-locked-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+/* ── Custom Food Panel ───────────────────────────────────────────────────── */
+.custom-food-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 /* ── Food Builder Card ───────────────────────────────────────────────────── */
 .food-builder-card { margin-top: 16px; }
 
@@ -492,7 +527,7 @@ a:hover { text-decoration: underline; }
 
 .food-table td {
   padding: 6px 8px;
-  border-top: 1px solid var(--border);
+  border-top: 0.5px solid var(--border);
   vertical-align: middle;
 }
 
@@ -915,15 +950,19 @@ a:hover { text-decoration: underline; }
   .recipe-open .calculator-content { /* no special shrink needed; recipe panel is aside */ }
 }
 
-/* ── Tablet (768–1023px): 2-column top grid ──────────────────────────────── */
+/* ── Tablet (600–1023px): 2-column, explicit placements reset ────────────── */
 @media (max-width: 1023px) and (min-width: 600px) {
-  .top-grid { grid-template-columns: 1fr 1fr; }
+  .calc-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .bolus-summary-card { grid-column: auto !important; grid-row: auto !important; }
+  .timing-card        { grid-column: auto !important; grid-row: auto !important; }
   .timing-bar { gap: 12px; }
 }
 
-/* ── Mobile fallback (< 600px) stacks everything ────────────────────────── */
+/* ── Mobile (< 600px): single column ────────────────────────────────────── */
 @media (max-width: 599px) {
-  .top-grid { grid-template-columns: 1fr; }
+  .calc-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+  .bolus-summary-card { grid-column: auto !important; grid-row: auto !important; }
+  .timing-card        { grid-column: auto !important; grid-row: auto !important; }
   .timing-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
   .recipe-panel {
     position: fixed; top: 56px; right: 0; height: calc(100dvh - 56px);
