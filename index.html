@@ -87,37 +87,48 @@
             <!-- Card 1: Food Entry (col 1, row 1) -->
             <div class="card food-entry-card" style="grid-column:1;grid-row:1">
               <div class="card__title">Food Entry</div>
-              <div class="inline-field">
-                <label class="inline-label" for="entry-food-search">Food</label>
-                <input type="text" class="input input--sm" id="entry-food-search" placeholder="Search food…" autocomplete="off" />
+
+              <!-- Standard mode -->
+              <div id="entry-standard-mode">
+                <div class="inline-field">
+                  <label class="inline-label" for="entry-food-search">Food</label>
+                  <div class="food-search-wrapper">
+                    <input type="text" class="input input--sm" id="entry-food-search" placeholder="Search food…" autocomplete="off" />
+                  </div>
+                  <span class="inline-unit food-entry-unit"></span>
+                </div>
+                <div class="inline-field">
+                  <label class="inline-label" for="entry-cf">CF</label>
+                  <input type="number" class="input input--sm entry-cf-input" id="entry-cf" placeholder="—" readonly tabindex="-1" />
+                  <span class="inline-unit food-entry-unit"></span>
+                </div>
+                <div class="inline-field">
+                  <label class="inline-label" for="entry-weight">Weight</label>
+                  <input type="number" class="input input--sm" id="entry-weight" placeholder="g" min="0" step="1" aria-label="Weight in grams" />
+                  <span class="inline-unit">g</span>
+                </div>
+                <div class="inline-field">
+                  <label class="inline-label" for="entry-carbs">Carbs</label>
+                  <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" aria-label="Carbs in grams" />
+                  <span class="inline-unit">g</span>
+                </div>
+                <div class="entry-btn-row">
+                  <button class="btn btn--primary entry-add-btn" id="add-food-btn">+ Add to Meal</button>
+                  <button class="btn btn--secondary entry-custom-btn" id="custom-food-toggle-btn">+ Custom</button>
+                </div>
               </div>
-              <div class="inline-field">
-                <label class="inline-label" for="entry-cf">CF</label>
-                <input type="number" class="input input--sm entry-cf-input" id="entry-cf" placeholder="—" readonly tabindex="-1" />
-              </div>
-              <div class="inline-field">
-                <label class="inline-label" for="entry-weight">Weight</label>
-                <input type="number" class="input input--sm" id="entry-weight" placeholder="g" min="0" step="1" aria-label="Weight in grams" />
-                <span class="inline-unit">g</span>
-              </div>
-              <div class="inline-field">
-                <label class="inline-label" for="entry-carbs">Carbs</label>
-                <input type="number" class="input input--sm" id="entry-carbs" placeholder="g" min="0" step="0.1" aria-label="Carbs in grams" />
-                <span class="inline-unit">g</span>
-              </div>
-              <div style="display:flex;gap:8px;margin-top:12px">
-                <button class="btn btn--primary btn--full" id="add-food-btn">+ Add to Meal</button>
-                <button class="btn btn--secondary btn--sm" id="custom-food-toggle-btn">+ Custom</button>
-              </div>
-              <!-- Inline custom food panel -->
-              <div class="custom-food-panel" id="custom-food-panel" hidden>
+
+              <!-- Custom mode (in-place, replaces standard fields) -->
+              <div id="entry-custom-mode" hidden>
                 <div class="inline-field">
                   <label class="inline-label" for="custom-name">Name</label>
                   <input type="text" class="input input--sm" id="custom-name" placeholder="Food name" />
+                  <span class="inline-unit food-entry-unit"></span>
                 </div>
                 <div class="inline-field">
                   <label class="inline-label" for="custom-cf">CF</label>
                   <input type="number" class="input input--sm" id="custom-cf" placeholder="e.g. 0.5" step="0.001" min="0" />
+                  <span class="inline-unit food-entry-unit"></span>
                 </div>
                 <div class="inline-field">
                   <label class="inline-label" for="custom-weight">Weight</label>
@@ -129,9 +140,9 @@
                   <input type="number" class="input input--sm" id="custom-carbs" placeholder="g" min="0" step="0.1" aria-label="Custom carbs in grams" />
                   <span class="inline-unit">g</span>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:10px">
-                  <button class="btn btn--primary btn--sm btn--full" id="custom-add-btn">+ Add to Meal</button>
-                  <button class="btn btn--secondary btn--sm" id="custom-cancel-btn">Cancel</button>
+                <div class="entry-btn-row">
+                  <button class="btn btn--primary entry-add-btn" id="custom-add-btn">+ Add to Meal</button>
+                  <button class="btn btn--secondary entry-custom-btn" id="custom-cancel-btn">Cancel</button>
                 </div>
               </div>
             </div>

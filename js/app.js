@@ -77,6 +77,7 @@ async function init() {
   setupPostMealTracker();
   setupExportTimer();
   navigate(getCurrentSection());
+  window.scrollTo(0, 0);
 }
 
 async function postAuthSetup(silent = false) {
@@ -306,22 +307,27 @@ function setupFoodEntryRow() {
   const carbsInput  = document.getElementById('entry-carbs');
   const addBtn      = document.getElementById('add-food-btn');
 
+  function onFoodSelect(food) {
+    const ef = getCurrentMeal().entryFood;
+    ef.name = food.name; ef.carbFactor = food.carbFactor; ef.absorptionRate = food.absorptionRate;
+    if (searchInput) searchInput.value = food.name;
+    if (cfInput) cfInput.value = food.carbFactor != null ? food.carbFactor : '';
+    if (ef.weightG) {
+      const c = calcNetCarbs(parseFloat(ef.weightG), food.carbFactor);
+      ef.carbsG = c; if (carbsInput) carbsInput.value = c;
+    } else if (ef.carbsG) {
+      const w = calcWeightFromCarbs(parseFloat(ef.carbsG), food.carbFactor);
+      ef.weightG = w; if (weightInput) weightInput.value = w;
+    }
+  }
+
   const debouncedSearch = debounce((query, el) => {
-    performFoodSearch(query, el, food => {
-      const ef = getCurrentMeal().entryFood;
-      ef.name = food.name; ef.carbFactor = food.carbFactor; ef.absorptionRate = food.absorptionRate;
-      if (searchInput) searchInput.value = food.name;
-      if (cfInput) cfInput.value = food.carbFactor != null ? food.carbFactor : '';
-      if (ef.weightG) {
-        const c = calcNetCarbs(parseFloat(ef.weightG), food.carbFactor);
-        ef.carbsG = c; if (carbsInput) carbsInput.value = c;
-      } else if (ef.carbsG) {
-        const w = calcWeightFromCarbs(parseFloat(ef.carbsG), food.carbFactor);
-        ef.weightG = w; if (weightInput) weightInput.value = w;
-      }
-    });
+    performFoodSearch(query, el, onFoodSelect);
   }, 300);
 
+  searchInput?.addEventListener('focus', e => {
+    performFoodSearch(e.target.value, e.target, onFoodSelect);
+  });
   searchInput?.addEventListener('input', e => {
     const ef = getCurrentMeal().entryFood;
     ef.name = e.target.value; ef.carbFactor = null;
@@ -359,42 +365,44 @@ function setupFoodEntryRow() {
 // ─── CUSTOM FOOD PANEL ───────────────────────────────────────────────────────
 
 function setupCustomFoodPanel() {
-  const toggleBtn  = document.getElementById('custom-food-toggle-btn');
-  const panel      = document.getElementById('custom-food-panel');
-  const nameInput  = document.getElementById('custom-name');
-  const cfInput    = document.getElementById('custom-cf');
-  const weightInput = document.getElementById('custom-weight');
-  const carbsInput = document.getElementById('custom-carbs');
-  const addBtn     = document.getElementById('custom-add-btn');
-  const cancelBtn  = document.getElementById('custom-cancel-btn');
+  const standardMode = document.getElementById('entry-standard-mode');
+  const customMode   = document.getElementById('entry-custom-mode');
+  const nameInput    = document.getElementById('custom-name');
+  const cfInput      = document.getElementById('custom-cf');
+  const weightInput  = document.getElementById('custom-weight');
+  const carbsInput   = document.getElementById('custom-carbs');
 
-  function clearPanel() {
+  function enterStandardMode() {
+    if (standardMode) standardMode.hidden = false;
+    if (customMode)   customMode.hidden   = true;
     [nameInput, cfInput, weightInput, carbsInput].forEach(el => { if (el) el.value = ''; });
   }
 
-  toggleBtn?.addEventListener('click', () => { if (panel) panel.hidden = !panel.hidden; });
+  document.getElementById('custom-food-toggle-btn')?.addEventListener('click', () => {
+    if (standardMode) standardMode.hidden = true;
+    if (customMode)   customMode.hidden   = false;
+    nameInput?.focus();
+  });
 
-  cancelBtn?.addEventListener('click', () => { if (panel) panel.hidden = true; clearPanel(); });
+  document.getElementById('custom-cancel-btn')?.addEventListener('click', enterStandardMode);
 
   cfInput?.addEventListener('input', () => {
     const cf = parseFloat(cfInput.value) || 0;
     const w  = parseFloat(weightInput?.value) || 0;
     if (cf && w && carbsInput) carbsInput.value = Math.round(w * cf * 10) / 10;
   });
-
   weightInput?.addEventListener('input', () => {
     const cf = parseFloat(cfInput?.value) || 0;
     const w  = parseFloat(weightInput.value) || 0;
     if (cf && w && carbsInput) carbsInput.value = Math.round(w * cf * 10) / 10;
   });
-
   carbsInput?.addEventListener('input', () => {
     const cf = parseFloat(cfInput?.value) || 0;
     const c  = parseFloat(carbsInput.value) || 0;
     if (cf && c && weightInput) weightInput.value = Math.round((c / cf) * 10) / 10;
   });
 
-  addBtn?.addEventListener('click', () => {
+  document.getElementById('custom-add-btn')?.addEventListener('click', () => {
     const name = nameInput?.value?.trim();
     if (!name) { showToast('Enter a food name', 'error'); return; }
     const cf = parseFloat(cfInput?.value) || null;
@@ -403,8 +411,7 @@ function setupCustomFoodPanel() {
     if (!w && !c) { showToast('Enter weight or carbs', 'error'); return; }
     const weight = w || (cf ? Math.round((c / cf) * 10) / 10 : 0);
     getCurrentMeal().foods.push({ name, carbFactor: cf, weightG: weight, absorptionRate: 3.0 });
-    clearPanel();
-    if (panel) panel.hidden = true;
+    enterStandardMode();
     renderFoodTable(); updateBolusLive();
   });
 }
@@ -479,11 +486,16 @@ function renderFoodTotals() {
 
 function performFoodSearch(query, inputEl, onSelect) {
   document.querySelector('.food-dropdown')?.remove();
-  if (!query || query.length < 1) return;
-  const q       = query.toLowerCase();
-  const personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
-  const builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
-  const results  = [...personal, ...builtin].slice(0, 8);
+  const q = (query || '').toLowerCase().trim();
+  let personal, builtin;
+  if (!q) {
+    personal = state.personalFoods.slice(0, 5);
+    builtin  = HEALTH_CANADA_FOODS.slice(0, Math.max(0, 5 - personal.length));
+  } else {
+    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
+    builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
+  }
+  const results = [...personal, ...builtin].slice(0, 8);
   if (!results.length) return;
   const dropdown = createFoodDropdown(results, onSelect);
   if (dropdown) positionDropdown(dropdown, inputEl);

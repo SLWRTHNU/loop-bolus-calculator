@@ -268,10 +268,10 @@ a:hover { text-decoration: underline; }
   border-color: var(--accent);
 }
 
-/* ── Calculator grid: 1fr 1fr 240px × auto auto ──────────────────────────── */
+/* ── Calculator grid: 1fr 1fr 1fr × auto auto ────────────────────────────── */
 .calc-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 240px;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: auto auto;
   gap: 16px;
   margin-bottom: 0;
@@ -473,12 +473,48 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 
-/* ── Custom Food Panel ───────────────────────────────────────────────────── */
-.custom-food-panel {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+/* ── Food search wrapper (arrow decoration) ──────────────────────────────── */
+.food-search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
+
+.food-search-wrapper::after {
+  content: '▾';
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-2);
+  font-size: 0.7rem;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.food-search-wrapper .input {
+  width: 100%;
+  padding-right: 22px;
+}
+
+/* ── Food Entry card: button row + in-place mode ─────────────────────────── */
+.entry-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.entry-add-btn    { flex: 0 0 60%; }
+.entry-custom-btn { flex: 0 0 calc(40% - 8px); }
+
+/* ── Consistent input widths within cards ────────────────────────────────── */
+.inline-field .input { flex: 1; min-width: 0; }
+
+/* food-entry-unit placeholder keeps rows aligned (same width as "g") */
+.food-entry-unit { min-width: 10px; }
+
+/* Factors card: fix unit column so all inputs are the same width */
+#bg-panel .inline-unit { min-width: 90px; }
 
 /* ── Food Builder Card ───────────────────────────────────────────────────── */
 .food-builder-card { margin-top: 16px; }
