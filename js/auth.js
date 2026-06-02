@@ -28,8 +28,8 @@ export async function startOAuth() {
   const challenge = await sha256(verifier);
   const state = generateRandom(16);
 
-  sessionStorage.setItem('pkce_verifier', verifier);
-  sessionStorage.setItem('oauth_state', state);
+  localStorage.setItem('lbc_pkce_verifier', verifier);
+  localStorage.setItem('lbc_oauth_state', state);
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -47,8 +47,8 @@ export async function startOAuth() {
 }
 
 export async function handleOAuthCallback(code, state) {
-  const savedState = sessionStorage.getItem('oauth_state');
-  const verifier = sessionStorage.getItem('pkce_verifier');
+  const savedState = localStorage.getItem('lbc_oauth_state');
+  const verifier = localStorage.getItem('lbc_pkce_verifier');
 
   if (state !== savedState) throw new Error('OAuth state mismatch');
 
@@ -77,8 +77,8 @@ export async function handleOAuthCallback(code, state) {
     expiry
   });
 
-  sessionStorage.removeItem('pkce_verifier');
-  sessionStorage.removeItem('oauth_state');
+  localStorage.removeItem('lbc_pkce_verifier');
+  localStorage.removeItem('lbc_oauth_state');
 
   const userInfo = await fetchUserInfo(tokens.access_token);
   if (userInfo.email) storage.set('google_email', userInfo.email);
