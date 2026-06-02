@@ -17,31 +17,47 @@ export function showToast(message, type = 'info', duration = 3000) {
 
 export function showSpinner(el) {
   el.disabled = true;
-  el.dataset.originalText = el.textContent;
+  el.dataset.originalText = el.innerHTML;
   el.innerHTML = '<span class="spinner"></span>';
 }
 
 export function hideSpinner(el) {
   el.disabled = false;
-  el.textContent = el.dataset.originalText || '';
+  el.innerHTML = el.dataset.originalText || '';
 }
 
-export function applyTheme(theme) {
-  const root = document.documentElement;
-  if (theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-  } else {
-    root.setAttribute('data-theme', theme);
+// Colour theme (green / amber / purple / slate / rose)
+export function applyColorTheme(colorTheme) {
+  document.documentElement.setAttribute('data-theme', colorTheme);
+  storage.set('color_theme', colorTheme);
+}
+
+// Light / dark mode (dark | light | system)
+export function applyMode(mode) {
+  let resolved = mode;
+  if (mode === 'system') {
+    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  storage.set('theme', theme);
+  document.documentElement.setAttribute('data-mode', resolved);
+  storage.set('mode', mode);
+}
+
+// Legacy shim – called by config restore path in app.js
+export function applyTheme(value) {
+  if (value === 'dark' || value === 'light' || value === 'system') {
+    applyMode(value);
+  } else {
+    applyColorTheme(value);
+  }
 }
 
 export function initTheme() {
-  const saved = storage.get('theme', 'system');
-  applyTheme(saved);
+  const savedColor = storage.get('color_theme', 'green');
+  const savedMode  = storage.get('mode', 'system');
+  applyColorTheme(savedColor);
+  applyMode(savedMode);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (storage.get('theme', 'system') === 'system') applyTheme('system');
+    if (storage.get('mode', 'system') === 'system') applyMode('system');
   });
 }
 
@@ -71,7 +87,8 @@ export function navigate(sectionId) {
 
 export function getCurrentSection() {
   const hash = window.location.hash.replace('#', '');
-  return hash || 'calculator';
+  const valid = ['calculator','log','how-to','contact','donate','settings'];
+  return valid.includes(hash) ? hash : 'calculator';
 }
 
 export function showError(el, message) {
@@ -96,18 +113,18 @@ export function createFoodDropdown(results, onSelect) {
   const existing = document.querySelector('.food-dropdown');
   if (existing) existing.remove();
 
-  if (!results.length) return;
+  if (!results.length) return null;
 
   const dropdown = document.createElement('ul');
   dropdown.className = 'food-dropdown';
   dropdown.setAttribute('role', 'listbox');
 
-  results.forEach((food, i) => {
+  results.forEach(food => {
     const li = document.createElement('li');
     li.setAttribute('role', 'option');
     li.setAttribute('tabindex', '0');
     li.innerHTML = `
-      <span class="food-name">${escapeHtml(food.name)}</span>
+      <span class="food-name">${escHtml(food.name)}</span>
       <span class="food-badge food-badge--${food.source === 'personal' ? 'personal' : 'hc'}">
         ${food.source === 'personal' ? 'Personal' : 'HC'}
       </span>
@@ -116,8 +133,8 @@ export function createFoodDropdown(results, onSelect) {
     li.addEventListener('mousedown', e => { e.preventDefault(); onSelect(food); dropdown.remove(); });
     li.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { onSelect(food); dropdown.remove(); }
-      if (e.key === 'ArrowDown') { const next = li.nextElementSibling; if (next) next.focus(); }
-      if (e.key === 'ArrowUp') { const prev = li.previousElementSibling; if (prev) prev.focus(); }
+      if (e.key === 'ArrowDown') { const n = li.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp')   { const p = li.previousElementSibling; if (p) p.focus(); }
     });
     dropdown.appendChild(li);
   });
@@ -125,21 +142,77 @@ export function createFoodDropdown(results, onSelect) {
   return dropdown;
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export function positionDropdown(dropdown, referenceEl) {
+  if (!dropdown || !referenceEl) return;
+  const rect = referenceEl.getBoundingClientRect();
+  dropdown.style.position = 'fixed';
+  dropdown.style.top  = (rect.bottom + 2) + 'px';
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.width = Math.max(rect.width, 260) + 'px';
+  document.body.appendChild(dropdown);
 }
 
 export function updateConnectedStatus(email) {
-  const banner = document.getElementById('drive-banner');
+  const banner   = document.getElementById('drive-banner');
   const statusEl = document.getElementById('drive-status');
   if (banner) banner.hidden = !!email;
   if (statusEl) {
     if (email) {
-      statusEl.innerHTML = `Connected as <strong>${escapeHtml(email)}</strong>`;
+      statusEl.innerHTML = `Connected as <strong>${escHtml(email)}</strong>`;
       statusEl.className = 'drive-status drive-status--connected';
     } else {
       statusEl.innerHTML = 'Not connected';
       statusEl.className = 'drive-status';
     }
   }
+}
+
+// ── Tools dropdown ──────────────────────────────────────────────────────────
+
+export function toggleToolsDropdown() {
+  const dd = document.getElementById('tools-dropdown');
+  if (!dd) return;
+  const isOpen = !dd.hidden;
+  dd.hidden = isOpen;
+  if (!isOpen) {
+    // Close when clicking outside
+    const close = e => {
+      if (!dd.contains(e.target) && e.target.id !== 'tools-btn') {
+        dd.hidden = true;
+        document.removeEventListener('click', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
+}
+
+// ── Elapsed timer helpers ───────────────────────────────────────────────────
+
+export function elapsedMMSS(fromDate) {
+  const diff = Math.max(0, Math.floor((Date.now() - fromDate.getTime()) / 1000));
+  const m = Math.floor(diff / 60).toString().padStart(2, '0');
+  const s = (diff % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// ── Recipe panel ─────────────────────────────────────────────────────────────
+
+export function openRecipePanel() {
+  const panel = document.getElementById('recipe-panel');
+  if (panel) panel.hidden = false;
+  document.getElementById('calculator-layout')?.classList.add('recipe-open');
+}
+
+export function closeRecipePanel() {
+  const panel = document.getElementById('recipe-panel');
+  if (panel) panel.hidden = true;
+  document.getElementById('calculator-layout')?.classList.remove('recipe-open');
+}
+
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
