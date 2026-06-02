@@ -605,12 +605,14 @@ function setupNavigation() {
   document.querySelectorAll('[data-nav]').forEach(btn => {
     btn.addEventListener('click', () => {
       navigate(btn.dataset.nav);
+      if (btn.dataset.nav === 'calculator') window.scrollTo({ top: 0, behavior: 'instant' });
       if (btn.dataset.nav === 'settings') renderSettingsSection();
       if (btn.dataset.nav === 'log')      renderLogSection();
     });
   });
   window.addEventListener('hashchange', () => {
     const section = getCurrentSection(); navigate(section);
+    if (section === 'calculator') window.scrollTo({ top: 0, behavior: 'instant' });
     if (section === 'settings') renderSettingsSection();
     if (section === 'log')      renderLogSection();
   });

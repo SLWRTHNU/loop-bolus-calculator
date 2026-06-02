@@ -60,6 +60,7 @@ h2 { font-size: 1.2rem; font-weight: 600; }
 h3 { font-size: 1rem; font-weight: 600; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+select { cursor: pointer; }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .app-header {
@@ -483,18 +484,19 @@ a:hover { text-decoration: underline; }
 .food-search-wrapper::after {
   content: '▾';
   position: absolute;
-  right: 7px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-2);
-  font-size: 0.7rem;
+  font-size: 1.4rem;
   pointer-events: none;
   line-height: 1;
 }
 
 .food-search-wrapper .input {
   width: 100%;
-  padding-right: 22px;
+  padding-right: 26px;
+  cursor: pointer;
 }
 
 /* ── Food Entry card: button row + in-place mode ─────────────────────────── */
@@ -502,6 +504,8 @@ a:hover { text-decoration: underline; }
   display: flex;
   gap: 8px;
   margin-top: 12px;
+  margin-left: calc(72px + 8px);
+  margin-right: calc(10px + 8px);
 }
 
 .entry-add-btn    { flex: 0 0 60%; }
