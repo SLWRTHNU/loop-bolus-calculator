@@ -1,6 +1,6 @@
 import { storage } from './storage.js';
 
-const GOOGLE_CLIENT_ID = '79990057872-4vv92lo6gc27f8sfdteph2hhqb2k017o.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '79990057872-vms381qnd78hsgtahs9rkr9q465tmq03.apps.googleusercontent.com';
 const REDIRECT_URI = 'https://claude-loop-bolus-calculator.loop-bolus-calculator.pages.dev';
 const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
