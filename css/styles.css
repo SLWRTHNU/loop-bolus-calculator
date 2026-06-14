@@ -965,6 +965,14 @@ select { cursor: pointer; }
 .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .page-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 20px; }
 .text-muted { color: var(--text-2); }
+
+.factors-sync-status {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.75em;
+  color: var(--text-2);
+}
 .text-sm { font-size: 0.875rem; }
 .mt-8  { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }

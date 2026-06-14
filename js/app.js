@@ -25,6 +25,7 @@ let state = {
   bolusLockedAt: {},
   mealLockedAt: {},
   bolusTimerID: null,
+  nsPollID: null,
   recipes: [],
   activeRecipeIndex: 0
 };
@@ -33,6 +34,7 @@ MEAL_SLUGS.forEach(slug => {
   state.meals[slug] = {
     foods: [], currentBG: '', iob: '', cob: '',
     postBgReadings: [], notes: '', bgTimestamp: null, bgTrend: null,
+    lastSyncAt: null,
     entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 }
   };
   state.bolusLockedAt[slug] = null;
@@ -69,6 +71,8 @@ async function init() {
   state.connected = await ping();
   updateConnectionStatus();
   if (state.connected) await postBackendSetup();
+  setupNightscoutPolling();
+  setInterval(updateSyncIndicator, 1000);
 }
 
 async function postBackendSetup() {
@@ -78,6 +82,7 @@ async function postBackendSetup() {
     state.personalFoods = await getFoodChart();
     renderAll();
     renderSettingsSection();
+    setupNightscoutPolling();
   } catch (err) { showToast('Backend sync error: ' + err.message, 'error'); }
 }
 
@@ -146,6 +151,7 @@ function renderAll() {
   renderLogSection();
   setVal('meal-notes', getCurrentMeal().notes || '');
   renderPostMealTracker();
+  updateSyncIndicator();
   // Restore per-tab entry food DOM
   const ef = getCurrentMeal().entryFood;
   const searchInput = document.getElementById('entry-food-search'); if (searchInput) searchInput.value = ef.name || '';
@@ -634,7 +640,7 @@ function setupNavigation() {
   document.getElementById('save-ns-btn')?.addEventListener('click', () => {
     const url = document.getElementById('ns-url')?.value?.trim(); const secret = document.getElementById('ns-secret')?.value?.trim();
     storage.set('ns_config', { url, secret }); persistConfig({ nightscout_url: url, nightscout_secret: secret });
-    renderMealSettingsPanel(); showToast('Nightscout settings saved', 'success');
+    renderMealSettingsPanel(); setupNightscoutPolling(); showToast('Nightscout settings saved', 'success');
   });
   document.getElementById('save-dex-btn')?.addEventListener('click', () => {
     const user = document.getElementById('dex-user')?.value?.trim(); const pass = document.getElementById('dex-pass')?.value?.trim(); const region = document.getElementById('dex-region')?.value;
@@ -1041,6 +1047,79 @@ function setupExportTimer() {
 const _debouncedSetConfig = debounce(async (config) => {
   try { await setConfig(config); } catch {}
 }, 1000);
+
+// ─── NIGHTSCOUT POLLING ──────────────────────────────────────────────────────
+
+async function pollNightscout() {
+  const ns = storage.get('ns_config');
+  if (!ns?.url) return;
+
+  const [bgRes, iobRes, cobRes, profileRes] = await Promise.allSettled([
+    nsBG(state.units), nsIOB(), nsCOB(), nsProfile(state.units)
+  ]);
+
+  const bg      = bgRes.status === 'fulfilled'      ? bgRes.value      : null;
+  const iob     = iobRes.status === 'fulfilled'     ? iobRes.value     : null;
+  const cob     = cobRes.status === 'fulfilled'     ? cobRes.value     : null;
+  const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
+
+  const now = new Date();
+  const activeEl = document.activeElement;
+
+  MEAL_SLUGS.forEach(slug => {
+    if (state.bolusLockedAt[slug]) return; // frozen after bolus given
+
+    const meal = state.meals[slug];
+    const isActive = slug === state.activeMeal;
+
+    if (bg && !(isActive && activeEl?.id === 'bg-value')) {
+      meal.currentBG = bg.value; meal.bgTimestamp = bg.timestamp; meal.bgTrend = bg.trend || null;
+    }
+    if (iob && !(isActive && activeEl?.id === 'iob-value')) meal.iob = iob.value;
+    if (cob && !(isActive && activeEl?.id === 'cob-value')) meal.cob = cob.value;
+
+    if (profile) {
+      const updates = {};
+      if (profile.icr != null       && !(isActive && activeEl?.id === 'icr-input'))       updates.icr = profile.icr;
+      if (profile.isf != null       && !(isActive && activeEl?.id === 'isf-input'))       updates.isf = profile.isf;
+      if (profile.target_bg != null && !(isActive && activeEl?.id === 'target-bg-input')) updates.target_bg = profile.target_bg;
+      if (Object.keys(updates).length) setMealSettings(slug, updates);
+    }
+
+    meal.lastSyncAt = now;
+  });
+
+  renderBGPanel();
+  renderMealSettingsPanel();
+  updateBolusLive();
+  persistConfig();
+}
+
+function setupNightscoutPolling() {
+  if (state.nsPollID) clearInterval(state.nsPollID);
+  const ns = storage.get('ns_config');
+  if (!ns?.url) return;
+  pollNightscout();
+  state.nsPollID = setInterval(pollNightscout, 60000);
+}
+
+function updateSyncIndicator() {
+  const el    = document.getElementById('factors-sync-status');
+  const agoEl = document.getElementById('sync-ago');
+  if (!el || !agoEl) return;
+
+  const ns     = storage.get('ns_config');
+  const meal   = getCurrentMeal();
+  const locked = state.bolusLockedAt[state.activeMeal];
+
+  if (!ns?.url || locked || !meal.lastSyncAt) { el.hidden = true; return; }
+
+  el.hidden = false;
+  const secs = Math.floor((Date.now() - meal.lastSyncAt.getTime()) / 1000);
+  const mm = Math.floor(secs / 60);
+  const ss = secs % 60;
+  agoEl.textContent = `${mm}:${String(ss).padStart(2, '0')}`;
+}
 
 function persistConfig(overrides = {}) {
   const meals = {}; MEAL_SLUGS.forEach(slug => { meals[slug] = getMealSettings(slug); });
