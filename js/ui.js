@@ -183,6 +183,7 @@ export function elapsedMMSS(fromDate) {
 // ── Recipe panel ─────────────────────────────────────────────────────────────
 
 export function openRecipePanel() {
+  closeFoodSearchPanel();
   const panel = document.getElementById('recipe-panel');
   if (panel) panel.hidden = false;
   document.getElementById('calculator-layout')?.classList.add('recipe-open');
@@ -190,6 +191,19 @@ export function openRecipePanel() {
 
 export function closeRecipePanel() {
   const panel = document.getElementById('recipe-panel');
+  if (panel) panel.hidden = true;
+  document.getElementById('calculator-layout')?.classList.remove('recipe-open');
+}
+
+export function openFoodSearchPanel() {
+  closeRecipePanel();
+  const panel = document.getElementById('food-search-panel');
+  if (panel) panel.hidden = false;
+  document.getElementById('calculator-layout')?.classList.add('recipe-open');
+}
+
+export function closeFoodSearchPanel() {
+  const panel = document.getElementById('food-search-panel');
   if (panel) panel.hidden = true;
   document.getElementById('calculator-layout')?.classList.remove('recipe-open');
 }

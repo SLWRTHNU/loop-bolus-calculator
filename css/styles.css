@@ -998,6 +998,51 @@ select { cursor: pointer; }
   .timing-bar { gap: 12px; }
 }
 
+/* ── Food Search ─────────────────────────────────────────────────────────── */
+
+.food-search-result {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.food-search-date {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  text-align: right;
+}
+.food-search-meal {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  text-align: right;
+  margin-bottom: 4px;
+}
+.food-search-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.food-search-title mark {
+  background: var(--accent-light, #fffd54);
+  border-radius: 2px;
+}
+.food-search-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  font-size: 0.8rem;
+  background: var(--bg-2);
+  padding: 6px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.food-search-label { font-weight: 600; }
+.food-search-link {
+  text-align: right;
+  font-size: 0.8rem;
+}
+#food-search-results { margin-top: 12px; }
+
 /* ── Mobile (< 600px): single column ────────────────────────────────────── */
 @media (max-width: 599px) {
   .calc-grid { grid-template-columns: 1fr; grid-template-rows: auto; }

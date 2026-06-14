@@ -57,6 +57,7 @@
           <button id="tools-clear-current" role="menuitem">Clear Current Meal</button>
           <button id="tools-export-all" role="menuitem">Export All Sheets (Today)</button>
           <button id="tools-recipe" role="menuitem">Recipe Builder</button>
+          <button id="tools-food-search" role="menuitem">Food Search</button>
           <button id="tools-tracker" role="menuitem">Post-Meal BG Tracker</button>
         </div>
       </div>
@@ -533,6 +534,22 @@
         </div>
       </div>
       <button class="btn btn--primary btn--full" id="recipe-add-to-meal-btn">Add to Meal</button>
+    </aside>
+
+    <!-- ── Food Search Panel ──────────────────────────────────────────────── -->
+    <aside class="recipe-panel" id="food-search-panel" hidden aria-label="Food Search">
+      <div class="recipe-panel__header">
+        <span class="recipe-panel__title">Food Search</span>
+        <button class="btn btn--icon" id="close-food-search-btn" aria-label="Close food search">×</button>
+      </div>
+      <div class="field">
+        <input type="text" class="input input--sm" id="food-search-input"
+               placeholder="Search past meals (e.g. Banana)…" autocomplete="off" />
+      </div>
+      <p class="tools-dropdown-note" id="food-search-offline-note" hidden>
+        Food Search requires an internet connection.
+      </p>
+      <div id="food-search-results"></div>
     </aside>
 
   </div><!-- /calculator-layout -->

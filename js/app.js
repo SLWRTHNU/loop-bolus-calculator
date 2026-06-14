@@ -1,7 +1,7 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { ping, getConfig, setConfig, getFoodChart, logMeal } from './backend.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood } from './backend.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
@@ -10,7 +10,8 @@ import {
   createFoodDropdown, positionDropdown,
   showSpinner, hideSpinner,
   formatTime, todayStr, elapsedMMSS,
-  toggleToolsDropdown, openRecipePanel, closeRecipePanel
+  toggleToolsDropdown, openRecipePanel, closeRecipePanel,
+  openFoodSearchPanel, closeFoodSearchPanel
 } from './ui.js';
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ async function init() {
   setupCustomFoodPanel();
   setupToolsMenu();
   setupRecipePanel();
+  setupFoodSearchPanel();
   setupPostMealTracker();
   setupExportTimer();
   navigate(getCurrentSection());
@@ -661,11 +663,81 @@ function setupToolsMenu() {
     const panel = document.getElementById('recipe-panel');
     if (panel?.hidden) { openRecipePanel(); renderRecipeTabs(); renderRecipePanel(); } else { closeRecipePanel(); }
   });
+  document.getElementById('tools-food-search')?.addEventListener('click', () => {
+    document.getElementById('tools-dropdown').hidden = true;
+    const panel = document.getElementById('food-search-panel');
+    if (panel?.hidden) {
+      openFoodSearchPanel();
+      const note = document.getElementById('food-search-offline-note');
+      const input = document.getElementById('food-search-input');
+      if (note) note.hidden = state.connected;
+      if (input) { input.disabled = !state.connected; if (state.connected) input.focus(); }
+    } else {
+      closeFoodSearchPanel();
+    }
+  });
   document.getElementById('tools-tracker')?.addEventListener('click', () => {
     document.getElementById('tools-dropdown').hidden = true;
     const tracker = document.getElementById('post-meal-tracker');
     if (tracker) tracker.hidden = !tracker.hidden;
   });
+}
+
+// ─── FOOD SEARCH PANEL ───────────────────────────────────────────────────────
+
+function setupFoodSearchPanel() {
+  document.getElementById('close-food-search-btn')?.addEventListener('click', closeFoodSearchPanel);
+
+  const input = document.getElementById('food-search-input');
+  const debouncedSearch = debounce(async (query) => {
+    const container = document.getElementById('food-search-results');
+    if (!container) return;
+    const q = query.trim();
+    if (q.length < 2) { container.innerHTML = ''; return; }
+
+    container.innerHTML = '<p class="empty-state">Searching…</p>';
+    try {
+      const rows = await searchFood(q);
+      renderFoodSearchResults(rows, q);
+    } catch (err) {
+      container.innerHTML = `<p class="empty-state">Search failed: ${escHtml(err.message)}</p>`;
+    }
+  }, 300);
+
+  input?.addEventListener('input', e => debouncedSearch(e.target.value));
+}
+
+function highlightMatch(text, query) {
+  const escaped = escHtml(text);
+  if (!query) return escaped;
+  const safeQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(`(${safeQuery})`, 'gi');
+  return escaped.replace(regex, '<mark>$1</mark>');
+}
+
+function renderFoodSearchResults(rows, query) {
+  const container = document.getElementById('food-search-results');
+  if (!container) return;
+  if (!rows.length) {
+    container.innerHTML = `<p class="empty-state">No matches for "${escHtml(query)}"</p>`;
+    return;
+  }
+  container.innerHTML = rows.map(r => {
+    const date = new Date(r.date);
+    const dateStr = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    return `
+      <div class="food-search-result">
+        <div class="food-search-date">${dateStr}</div>
+        <div class="food-search-meal">${escHtml(r.meal)}</div>
+        <div class="food-search-title">${highlightMatch(r.food, query)}</div>
+        <div class="food-search-stats">
+          <div><span class="food-search-label">CF:</span> ${r.cf ?? '—'}</div>
+          <div><span class="food-search-label">Weight:</span> ${r.wt ?? '—'} g</div>
+          <div><span class="food-search-label">Net Carbs:</span> ${r.carbs ?? '—'} g</div>
+        </div>
+        ${r.url ? `<div class="food-search-link"><a href="${r.url}" target="_blank">View Log ↗</a></div>` : ''}
+      </div>`;
+  }).join('');
 }
 
 // ─── BOLUS GIVEN ─────────────────────────────────────────────────────────────
