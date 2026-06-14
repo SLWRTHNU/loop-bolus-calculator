@@ -14,7 +14,7 @@ async function nsGet(path) {
   if (!url) throw new Error('Nightscout URL not configured');
 
   const base = url.replace(/\/$/, '');
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {};
   if (secret) headers['api-secret'] = await sha1(secret);
 
   const resp = await fetch(`${base}${path}`, { headers });
