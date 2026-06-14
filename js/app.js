@@ -653,8 +653,9 @@ function setupToolsMenu() {
     const note = document.getElementById('guest-export-note'); if (note) note.hidden = state.connected;
     toggleToolsDropdown();
   });
-  document.getElementById('tools-export-current')?.addEventListener('click', () => { document.getElementById('tools-dropdown').hidden = true; exportAndClearCurrentSheet(); });
-  document.getElementById('tools-export-all')?.addEventListener('click',     () => { document.getElementById('tools-dropdown').hidden = true; exportAndClearAllSheets(); });
+  document.getElementById('tools-export-current')?.addEventListener('click', () => { document.getElementById('tools-dropdown').hidden = true; exportCurrentSheet(); });
+  document.getElementById('tools-export-all')?.addEventListener('click',     () => { document.getElementById('tools-dropdown').hidden = true; exportAllSheets(); });
+  document.getElementById('tools-clear-current')?.addEventListener('click',  () => { document.getElementById('tools-dropdown').hidden = true; clearCurrentMeal(); });
   document.getElementById('tools-recipe')?.addEventListener('click', () => {
     document.getElementById('tools-dropdown').hidden = true;
     const panel = document.getElementById('recipe-panel');
@@ -713,7 +714,18 @@ function entriesToRows(entries) {
   return entries.map(e => [e.date, e.meal, e.food, e.carbFactor ?? '', e.weightG, e.netCarbs, e.notes || '']);
 }
 
-async function exportAndClearCurrentSheet() {
+function clearMeal(slug) {
+  state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
+}
+
+function clearCurrentMeal() {
+  const slug = state.activeMeal;
+  if (!confirm(`Clear ${MEAL_LABELS[slug]} without exporting? This cannot be undone.`)) return;
+  clearMeal(slug);
+  showToast(`${MEAL_LABELS[slug]} cleared`, 'info');
+}
+
+async function exportCurrentSheet() {
   const slug = state.activeMeal; const entries = buildLogEntries(slug, state.meals[slug]);
   if (!entries.length) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
   const dateStr = todayStr();
@@ -723,17 +735,15 @@ async function exportAndClearCurrentSheet() {
       const result = await logMeal(entriesToRows(entries));
       if (!result?.success) throw new Error(result?.error || 'Export failed');
       storage.set('last_export_date', dateStr);
-      state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
       showToast('Exported to Drive', 'success'); renderLogSection();
       return;
     } catch {}
   }
   downloadLocalCSV(entries, dateStr);
-  state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
   showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
-async function exportAndClearAllSheets() {
+async function exportAllSheets() {
   const allEntries = []; MEAL_SLUGS.forEach(slug => { allEntries.push(...buildLogEntries(slug, state.meals[slug])); });
   if (!allEntries.length) { showToast('No foods to export', 'error'); return; }
   const dateStr = todayStr();
@@ -743,13 +753,11 @@ async function exportAndClearAllSheets() {
       const result = await logMeal(entriesToRows(allEntries));
       if (!result?.success) throw new Error(result?.error || 'Export failed');
       storage.set('last_export_date', dateStr);
-      MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
       showToast('Exported to Drive', 'success'); renderLogSection();
       return;
     } catch {}
   }
   downloadLocalCSV(allEntries, dateStr);
-  MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
   showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
