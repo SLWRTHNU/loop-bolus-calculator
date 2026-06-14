@@ -73,10 +73,17 @@ export async function fetchProfile(units) {
   const targetHighRaw = getActiveValue(profile.target_high);
   const targetLowRaw = getActiveValue(profile.target_low);
 
+  // Nightscout profiles store sens/target in whatever unit the profile itself
+  // is set up in (profile.units), which may differ from the app's display
+  // units. Only convert if they actually differ.
+  const profileIsMmol = String(profile.units || 'mg/dl').toLowerCase().startsWith('mmol');
+  const displayIsMmol = units === 'mmol';
+
   const convert = v => {
     if (v == null) return null;
-    if (units === 'mmol') return Math.round(mgdlToMmol(v) * 10) / 10;
-    return Math.round(v);
+    if (profileIsMmol && !displayIsMmol) return Math.round(mmolToMgdl(v));
+    if (!profileIsMmol && displayIsMmol) return Math.round(mgdlToMmol(v) * 10) / 10;
+    return displayIsMmol ? Math.round(v * 10) / 10 : Math.round(v);
   };
 
   return {
