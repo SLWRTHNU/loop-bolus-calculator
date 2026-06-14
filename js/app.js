@@ -673,6 +673,90 @@ function setupToolsMenu() {
   });
 }
 
+// ─── EXPORT PAYLOAD BUILDERS ─────────────────────────────────────────────────
+
+function buildMealExportPayload(slug) {
+  const meal = state.meals[slug];
+  const settings = getMealSettings(slug);
+  const bolusTimeAt = state.bolusLockedAt[slug];
+  const eatTimeAt   = state.mealLockedAt[slug];
+
+  const bolus = calcBolus({
+    foods: meal.foods,
+    currentBG: parseFloat(meal.currentBG) || null,
+    targetBG: settings.target_bg,
+    icr: settings.icr,
+    isf: settings.isf,
+    iob: parseFloat(meal.iob) || 0
+  });
+
+  return {
+    name: MEAL_LABELS[slug],
+    foods: meal.foods.map(f => ({
+      name: f.name,
+      source: f.source || '',
+      carbFactor: f.carbFactor,
+      absorptionRate: f.absorptionRate,
+      weightGiven: f.weightG,
+      netCarbs: calcNetCarbs(parseFloat(f.weightG) || 0, f.carbFactor || 0)
+    })),
+    carbRatio: settings.icr,
+    target: settings.target_bg,
+    isf: settings.isf,
+    currentBG: meal.currentBG,
+    totalNetCarbs: bolus.totalNetCarbs,
+    iob: meal.iob,
+    cob: meal.cob,
+    mealBolus: bolus.mealBolus,
+    correctionBolus: bolus.correctionBolus,
+    totalBolus: bolus.totalBolus,
+    bolusTime: bolusTimeAt ? hhmm(bolusTimeAt) : '',
+    eatTime: eatTimeAt ? hhmm(eatTimeAt) : '',
+    postMealReadings: (meal.postBgReadings || [])
+      .filter(r => r.time || r.bg)
+      .map(r => ({
+        time: r.time, minSinceBolus: r.minSinceBolus,
+        bg: r.bg, trend: r.trend, delta: r.delta
+      })),
+    notes: meal.notes || ''
+  };
+}
+
+function buildDayExportPayload(slugs) {
+  const meals = slugs
+    .map(buildMealExportPayload)
+    .filter(m => m.foods.length > 0);
+  return meals;
+}
+
+function flattenToCSVRows(meals) {
+  const date = todayStr();
+  const rows = [];
+  meals.forEach(m => m.foods.forEach(f => {
+    rows.push([date, m.name, f.name, f.carbFactor, f.weightGiven, f.netCarbs, m.notes]);
+  }));
+  return rows;
+}
+
+function downloadCSV(rows) {
+  const headers = ['Date', 'Meal', 'Food', 'Carb Factor', 'Weight (g)', 'Net Carbs (g)', 'Notes'];
+  const csv = [headers, ...rows].map(row =>
+    row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+
+  const date = new Date();
+  const monthName = date.toLocaleString('en-CA', { month: 'long' });
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  const filename = `Loop Bolus - ${monthName} ${day} ${year}.csv`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
 // ─── BOLUS GIVEN ─────────────────────────────────────────────────────────────
 
 function handleBolusGiven() {
@@ -720,43 +804,58 @@ function entriesToRows(entries) {
 }
 
 async function exportAndClearCurrentSheet() {
-  const slug = state.activeMeal; const entries = buildLogEntries(slug, state.meals[slug]);
-  if (!entries.length) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
-  const dateStr = todayStr();
-  if (state.connected) {
-    try {
+  const slug = state.activeMeal;
+  const meals = buildDayExportPayload([slug]);
+  if (meals.length === 0) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
+
+  try {
+    if (state.connected) {
       showToast('Exporting…', 'info');
-      const result = await logMeal(entriesToRows(entries));
+      const result = await logMeal({ meals });
       if (!result?.success) throw new Error(result?.error || 'Export failed');
-      storage.set('last_export_date', dateStr);
-      state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
+      storage.set('last_export_date', todayStr());
+      clearMeal(slug);
       showToast('Exported to Drive', 'success'); renderLogSection();
-      return;
-    } catch {}
+    } else {
+      throw new Error('offline');
+    }
+  } catch {
+    downloadCSV(flattenToCSVRows(meals));
+    clearMeal(slug);
+    showToast('Saved locally (offline)', 'info'); renderLogSection();
   }
-  downloadLocalCSV(entries, dateStr);
-  state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
-  showToast('Saved locally (offline)', 'info'); renderLogSection();
+}
+
+function clearMeal(slug) {
+  state.meals[slug].foods = [];
+  state.meals[slug].notes = '';
+  state.meals[slug].postBgReadings = [];
+  state.bolusLockedAt[slug] = null;
+  state.mealLockedAt[slug] = null;
+  renderAll();
+  updateBolusLive();
 }
 
 async function exportAndClearAllSheets() {
-  const allEntries = []; MEAL_SLUGS.forEach(slug => { allEntries.push(...buildLogEntries(slug, state.meals[slug])); });
-  if (!allEntries.length) { showToast('No foods to export', 'error'); return; }
-  const dateStr = todayStr();
-  if (state.connected) {
-    try {
+  const meals = buildDayExportPayload(MEAL_SLUGS);
+  if (meals.length === 0) { showToast('No foods to export', 'error'); return; }
+
+  try {
+    if (state.connected) {
       showToast('Exporting all meals…', 'info');
-      const result = await logMeal(entriesToRows(allEntries));
+      const result = await logMeal({ meals });
       if (!result?.success) throw new Error(result?.error || 'Export failed');
-      storage.set('last_export_date', dateStr);
-      MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
+      storage.set('last_export_date', todayStr());
+      MEAL_SLUGS.forEach(clearMeal);
       showToast('Exported to Drive', 'success'); renderLogSection();
-      return;
-    } catch {}
+    } else {
+      throw new Error('offline');
+    }
+  } catch {
+    downloadCSV(flattenToCSVRows(meals));
+    MEAL_SLUGS.forEach(clearMeal);
+    showToast('Saved locally (offline)', 'info'); renderLogSection();
   }
-  downloadLocalCSV(allEntries, dateStr);
-  MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
-  showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
 async function exportToDrive() {
@@ -1019,21 +1118,24 @@ function setupExportTimer() {
       const yesterday = lastCheck; lastCheck = today;
       const lastExport = storage.get('last_export_date');
       if (lastExport !== yesterday) {
-        const log = getTodayLog();
-        if (log.length) {
+        const meals = buildDayExportPayload(MEAL_SLUGS);
+        if (meals.length > 0) {
           try {
             if (state.connected) {
-              const result = await logMeal(entriesToRows(log));
+              const result = await logMeal({ meals });
               if (result?.success) {
-                storage.set('last_export_date', yesterday); setTodayLog([]);
+                storage.set('last_export_date', yesterday);
+                MEAL_SLUGS.forEach(clearMeal);
                 showToast("Yesterday's log exported automatically", 'success');
                 return;
               }
             }
-            downloadLocalCSV(log, yesterday); setTodayLog([]);
+            downloadCSV(flattenToCSVRows(meals));
+            MEAL_SLUGS.forEach(clearMeal);
             showToast("Yesterday's log saved locally (offline)", 'info');
           } catch {
-            downloadLocalCSV(log, yesterday); setTodayLog([]);
+            downloadCSV(flattenToCSVRows(meals));
+            MEAL_SLUGS.forEach(clearMeal);
             showToast("Yesterday's log saved locally (offline)", 'info');
           }
         }
