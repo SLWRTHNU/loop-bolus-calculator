@@ -1,16 +1,14 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { startOAuth, handleOAuthCallback, isConnected, disconnect, getAccessToken } from './auth.js';
-import { setupDriveFolders, loadConfig, saveConfig, getSheetUrl } from './drive.js';
-import { readFoodChart, exportLogToSheet } from './sheets.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal } from './backend.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
   showToast, applyTheme, applyColorTheme, applyMode, initTheme,
   navigate, getCurrentSection, debounce,
   createFoodDropdown, positionDropdown,
-  showSpinner, hideSpinner, updateConnectedStatus,
+  showSpinner, hideSpinner,
   formatTime, todayStr, elapsedMMSS,
   toggleToolsDropdown, openRecipePanel, closeRecipePanel
 } from './ui.js';
@@ -23,6 +21,7 @@ let state = {
   personalFoods: [],
   config: null,
   units: 'mmol',
+  connected: false,
   bolusLockedAt: {},
   mealLockedAt: {},
   bolusTimerID: null,
@@ -55,18 +54,6 @@ async function init() {
   initTheme();
   state.units = storage.get('units', 'mmol');
 
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('code')) {
-    try {
-      await handleOAuthCallback(params.get('code'), params.get('state'));
-      window.history.replaceState({}, '', window.location.pathname);
-      showToast('Google account connected!', 'success');
-      await postAuthSetup();
-    } catch (err) { showToast('OAuth failed: ' + err.message, 'error'); }
-  } else if (isConnected()) {
-    await postAuthSetup(true);
-  }
-
   renderAll();
   setupNavigation();
   setupTimingCard();
@@ -78,20 +65,32 @@ async function init() {
   setupExportTimer();
   navigate(getCurrentSection());
   window.scrollTo(0, 0);
+
+  state.connected = await ping();
+  updateConnectionStatus();
+  if (state.connected) await postBackendSetup();
 }
 
-async function postAuthSetup(silent = false) {
+async function postBackendSetup() {
   try {
-    if (!storage.get('drive_folder_id')) {
-      if (!silent) showToast('Setting up Drive folders…', 'info');
-      await setupDriveFolders();
-    }
-    const config = await loadConfig();
-    if (config) { state.config = config; applyConfig(config); if (!silent) showToast('Settings restored from Drive', 'success'); }
-    state.personalFoods = await readFoodChart();
-    updateConnectedStatus(storage.get('google_email', ''));
+    const config = await getConfig();
+    if (config) { state.config = config; applyConfig(config); }
+    state.personalFoods = await getFoodChart();
+    renderAll();
     renderSettingsSection();
-  } catch (err) { showToast('Drive setup error: ' + err.message, 'error'); }
+  } catch (err) { showToast('Backend sync error: ' + err.message, 'error'); }
+}
+
+function updateConnectionStatus() {
+  const statusEl = document.getElementById('backend-status');
+  if (!statusEl) return;
+  if (state.connected) {
+    statusEl.textContent = 'Connected';
+    statusEl.className = 'drive-status drive-status--connected';
+  } else {
+    statusEl.textContent = 'Offline — using local data';
+    statusEl.className = 'drive-status';
+  }
 }
 
 function applyConfig(config) {
@@ -580,18 +579,7 @@ function renderLogSection() {
 // ─── SETTINGS SECTION ────────────────────────────────────────────────────────
 
 function renderSettingsSection() {
-  const email = storage.get('google_email', ''), connected = isConnected();
-  document.getElementById('connect-block')?.toggleAttribute('hidden', connected);
-  document.getElementById('connected-block')?.toggleAttribute('hidden', !connected);
-  if (connected) {
-    const emailEl = document.getElementById('connected-email'); if (emailEl) emailEl.textContent = email;
-    const folderId = storage.get('drive_folder_id');
-    const folderLink = document.getElementById('drive-folder-link');
-    if (folderLink && folderId) { folderLink.href = `https://drive.google.com/drive/folders/${folderId}`; folderLink.hidden = false; }
-    const sheetId = storage.get('food_sheet_id');
-    const sheetLink = document.getElementById('food-sheet-link');
-    if (sheetLink && sheetId) { sheetLink.href = `https://docs.google.com/spreadsheets/d/${sheetId}`; sheetLink.hidden = false; }
-  }
+  updateConnectionStatus();
   const nsConfig = storage.get('ns_config', {}); setVal('ns-url', nsConfig.url||''); setVal('ns-secret', nsConfig.secret||'');
   const dexConfig = storage.get('dexcom_config', {}); setVal('dex-user', dexConfig.user||''); setVal('dex-pass', dexConfig.pass||''); setVal('dex-region', dexConfig.region||'us');
   const unitsSelect = document.getElementById('units-select'); if (unitsSelect) unitsSelect.value = state.units;
@@ -633,16 +621,6 @@ function setupNavigation() {
   document.getElementById('bolus-given-btn')?.addEventListener('click', handleBolusGiven);
   document.getElementById('export-log-btn')?.addEventListener('click',  exportToDrive);
 
-  document.getElementById('connect-google-btn')?.addEventListener('click', startOAuth);
-  document.getElementById('disconnect-google-btn')?.addEventListener('click', () => {
-    disconnect(); state.personalFoods = []; state.config = null;
-    updateConnectedStatus(null); renderSettingsSection(); showToast('Google account disconnected', 'info');
-  });
-  document.getElementById('build-folders-btn')?.addEventListener('click', async e => {
-    showSpinner(e.target);
-    try { await setupDriveFolders(document.getElementById('drive-folder-name')?.value || 'Loop Bolus Calculator'); showToast('Drive folders created!', 'success'); renderSettingsSection(); }
-    catch (err) { showToast('Error: ' + err.message, 'error'); } finally { hideSpinner(e.target); }
-  });
   document.getElementById('test-ns-btn')?.addEventListener('click', async e => {
     showSpinner(e.target);
     try { const { testConnection } = await import('./nightscout.js'); const ok = await testConnection(); showToast(ok ? 'Nightscout connected!' : 'Connection failed', ok ? 'success' : 'error'); }
@@ -672,7 +650,7 @@ function setupNavigation() {
 function setupToolsMenu() {
   document.getElementById('tools-btn')?.addEventListener('click', e => {
     e.stopPropagation();
-    const note = document.getElementById('guest-export-note'); if (note) note.hidden = isConnected();
+    const note = document.getElementById('guest-export-note'); if (note) note.hidden = state.connected;
     toggleToolsDropdown();
   });
   document.getElementById('tools-export-current')?.addEventListener('click', () => { document.getElementById('tools-dropdown').hidden = true; exportAndClearCurrentSheet(); });
@@ -722,7 +700,6 @@ function downloadLocalCSV(entries, dateStr) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
-  showToast('Export downloaded', 'success');
 }
 
 function buildLogEntries(slug, meal) {
@@ -732,46 +709,67 @@ function buildLogEntries(slug, meal) {
   }));
 }
 
+function entriesToRows(entries) {
+  return entries.map(e => [e.date, e.meal, e.food, e.carbFactor ?? '', e.weightG, e.netCarbs, e.notes || '']);
+}
+
 async function exportAndClearCurrentSheet() {
   const slug = state.activeMeal; const entries = buildLogEntries(slug, state.meals[slug]);
   if (!entries.length) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
-  if (!isConnected()) {
-    downloadLocalCSV(entries, todayStr());
-    state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
-    return;
+  const dateStr = todayStr();
+  if (state.connected) {
+    try {
+      showToast('Exporting…', 'info');
+      const result = await logMeal(entriesToRows(entries));
+      if (!result?.success) throw new Error(result?.error || 'Export failed');
+      storage.set('last_export_date', dateStr);
+      state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
+      showToast('Exported to Drive', 'success'); renderLogSection();
+      return;
+    } catch {}
   }
-  try {
-    showToast('Exporting…', 'info'); const dateStr = todayStr();
-    await exportLogToSheet(dateStr, entries); storage.set('last_export_date', dateStr);
-    state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
-    showToast(`${MEAL_LABELS[slug]} exported and cleared`, 'success'); renderLogSection();
-  } catch (err) { showToast('Export failed: ' + err.message, 'error'); }
+  downloadLocalCSV(entries, dateStr);
+  state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
+  showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
 async function exportAndClearAllSheets() {
   const allEntries = []; MEAL_SLUGS.forEach(slug => { allEntries.push(...buildLogEntries(slug, state.meals[slug])); });
   if (!allEntries.length) { showToast('No foods to export', 'error'); return; }
-  if (!isConnected()) {
-    downloadLocalCSV(allEntries, todayStr());
-    MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
-    return;
+  const dateStr = todayStr();
+  if (state.connected) {
+    try {
+      showToast('Exporting all meals…', 'info');
+      const result = await logMeal(entriesToRows(allEntries));
+      if (!result?.success) throw new Error(result?.error || 'Export failed');
+      storage.set('last_export_date', dateStr);
+      MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
+      showToast('Exported to Drive', 'success'); renderLogSection();
+      return;
+    } catch {}
   }
-  try {
-    showToast('Exporting all meals…', 'info'); const dateStr = todayStr();
-    await exportLogToSheet(dateStr, allEntries); storage.set('last_export_date', dateStr);
-    MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
-    showToast('All meals exported and cleared', 'success'); renderLogSection();
-  } catch (err) { showToast('Export failed: ' + err.message, 'error'); }
+  downloadLocalCSV(allEntries, dateStr);
+  MEAL_SLUGS.forEach(slug => { state.meals[slug].foods = []; }); renderFoodTable(); updateBolusLive();
+  showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
 async function exportToDrive() {
   const btn = document.getElementById('export-log-btn'); if (btn) showSpinner(btn);
   try {
-    if (!isConnected()) throw new Error('Connect Google Drive first');
     const log = getTodayLog(); if (!log.length) throw new Error('Nothing to export');
-    const dateStr = todayStr(); await exportLogToSheet(dateStr, log);
-    storage.set('last_export_date', dateStr); showToast('Log exported to Drive!', 'success'); renderLogSection();
-  } catch (err) { showToast('Export failed: ' + err.message, 'error'); } finally { if (btn) hideSpinner(btn); }
+    const dateStr = todayStr();
+    if (state.connected) {
+      const result = await logMeal(entriesToRows(log));
+      if (!result?.success) throw new Error(result?.error || 'Export failed');
+      storage.set('last_export_date', dateStr); showToast('Exported to Drive', 'success'); renderLogSection();
+    } else {
+      downloadLocalCSV(log, dateStr); showToast('Saved locally (offline)', 'info');
+    }
+  } catch (err) {
+    const log = getTodayLog();
+    if (log.length) { downloadLocalCSV(log, todayStr()); showToast('Saved locally (offline)', 'info'); }
+    else showToast('Export failed: ' + err.message, 'error');
+  } finally { if (btn) hideSpinner(btn); }
 }
 
 // ─── POST-MEAL BG TRACKER ────────────────────────────────────────────────────
@@ -1014,9 +1012,25 @@ function setupExportTimer() {
     if (today !== lastCheck) {
       const yesterday = lastCheck; lastCheck = today;
       const lastExport = storage.get('last_export_date');
-      if (lastExport !== yesterday && isConnected()) {
+      if (lastExport !== yesterday) {
         const log = getTodayLog();
-        if (log.length) { try { await exportLogToSheet(yesterday, log); storage.set('last_export_date', yesterday); setTodayLog([]); showToast("Yesterday's log exported automatically", 'success'); } catch {} }
+        if (log.length) {
+          try {
+            if (state.connected) {
+              const result = await logMeal(entriesToRows(log));
+              if (result?.success) {
+                storage.set('last_export_date', yesterday); setTodayLog([]);
+                showToast("Yesterday's log exported automatically", 'success');
+                return;
+              }
+            }
+            downloadLocalCSV(log, yesterday); setTodayLog([]);
+            showToast("Yesterday's log saved locally (offline)", 'info');
+          } catch {
+            downloadLocalCSV(log, yesterday); setTodayLog([]);
+            showToast("Yesterday's log saved locally (offline)", 'info');
+          }
+        }
       }
     }
   }, 60000);
@@ -1024,13 +1038,25 @@ function setupExportTimer() {
 
 // ─── PERSIST CONFIG ──────────────────────────────────────────────────────────
 
-async function persistConfig(overrides = {}) {
-  if (!isConnected()) return;
-  try {
-    const existing = await loadConfig() || {};
-    const meals = {}; MEAL_SLUGS.forEach(slug => { meals[slug] = getMealSettings(slug); });
-    await saveConfig({ ...existing, units: state.units, color_theme: storage.get('color_theme','green'), mode: storage.get('mode','system'), meals, ...overrides });
-  } catch {}
+const _debouncedSetConfig = debounce(async (config) => {
+  try { await setConfig(config); } catch {}
+}, 1000);
+
+function persistConfig(overrides = {}) {
+  const meals = {}; MEAL_SLUGS.forEach(slug => { meals[slug] = getMealSettings(slug); });
+  const config = {
+    units: state.units,
+    color_theme: storage.get('color_theme', 'green'),
+    mode: storage.get('mode', 'system'),
+    nightscout_url: (storage.get('ns_config') || {}).url || '',
+    nightscout_secret: (storage.get('ns_config') || {}).secret || '',
+    dexcom_user: (storage.get('dexcom_config') || {}).user || '',
+    dexcom_pass: (storage.get('dexcom_config') || {}).pass || '',
+    dexcom_region: (storage.get('dexcom_config') || {}).region || 'us',
+    meals,
+    ...overrides
+  };
+  if (state.connected) _debouncedSetConfig(config);
 }
 
 document.addEventListener('DOMContentLoaded', init);

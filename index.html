@@ -52,7 +52,7 @@
           Tools ▾
         </button>
         <div class="tools-dropdown" id="tools-dropdown" hidden role="menu">
-          <p class="tools-dropdown-note" id="guest-export-note" hidden>Exports will download as a file while in guest mode.</p>
+          <p class="tools-dropdown-note" id="guest-export-note" hidden>Exports will download as a file while offline.</p>
           <button id="tools-export-current" role="menuitem">Export &amp; Clear Current Sheet</button>
           <button id="tools-export-all" role="menuitem">Export &amp; Clear All Sheets (Today)</button>
           <button id="tools-recipe" role="menuitem">Recipe Builder</button>
@@ -61,14 +61,6 @@
       </div>
     </nav>
   </header>
-
-  <!-- ── Guest Mode Banner ────────────────────────────────────────────────── -->
-  <div class="drive-banner" id="drive-banner">
-    <div class="drive-banner__text">
-      <strong>You're in guest mode</strong> — any data you enter will be lost when you refresh or leave this page. Connect Google Drive to save your settings and export daily logs.
-    </div>
-    <button class="btn btn--primary btn--sm" onclick="document.querySelector('[data-nav=settings]').click()">Connect</button>
-  </div>
 
   <div class="calculator-layout" id="calculator-layout">
     <div class="calculator-content">
@@ -391,33 +383,8 @@
           <h1 class="page-title">Settings</h1>
 
           <div class="settings-section">
-            <h2>Google Account</h2>
-            <div id="connect-block">
-              <p class="text-muted text-sm mb-12">Connect Google Drive to save settings, personal foods, and export daily logs.</p>
-              <button class="btn btn--primary" id="connect-google-btn">Connect Google Drive</button>
-            </div>
-            <div id="connected-block" hidden>
-              <div class="drive-status drive-status--connected" id="drive-status">Connected</div>
-              <p class="text-sm mb-8">Signed in as <strong id="connected-email"></strong></p>
-              <div class="btn-row">
-                <a class="btn btn--secondary btn--sm" id="drive-folder-link" href="#" target="_blank" rel="noopener" hidden>Open Drive Folder</a>
-                <button class="btn btn--danger btn--sm" id="disconnect-google-btn">Disconnect</button>
-              </div>
-            </div>
-          </div>
-
-          <hr class="divider" />
-
-          <div class="settings-section">
-            <h2>Google Drive Setup</h2>
-            <div class="field">
-              <label for="drive-folder-name">Folder name in Drive</label>
-              <input type="text" class="input" id="drive-folder-name" value="Loop Bolus Calculator" />
-            </div>
-            <div class="btn-row">
-              <button class="btn btn--secondary" id="build-folders-btn">Build Folder Structure</button>
-              <a class="btn btn--secondary btn--sm" id="food-sheet-link" href="#" target="_blank" rel="noopener" hidden>Open Food Chart</a>
-            </div>
+            <h2>Connection</h2>
+            <div id="backend-status" class="drive-status">Checking…</div>
           </div>
 
           <hr class="divider" />

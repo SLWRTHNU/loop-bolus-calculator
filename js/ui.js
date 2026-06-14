@@ -152,21 +152,6 @@ export function positionDropdown(dropdown, referenceEl) {
   document.body.appendChild(dropdown);
 }
 
-export function updateConnectedStatus(email) {
-  const banner   = document.getElementById('drive-banner');
-  const statusEl = document.getElementById('drive-status');
-  if (banner) banner.hidden = !!email;
-  if (statusEl) {
-    if (email) {
-      statusEl.innerHTML = `Connected as <strong>${escHtml(email)}</strong>`;
-      statusEl.className = 'drive-status drive-status--connected';
-    } else {
-      statusEl.innerHTML = 'Not connected';
-      statusEl.className = 'drive-status';
-    }
-  }
-}
-
 // ── Tools dropdown ──────────────────────────────────────────────────────────
 
 export function toggleToolsDropdown() {

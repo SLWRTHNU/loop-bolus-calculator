@@ -1,12 +1,10 @@
-const CACHE_NAME = 'lbc-v1';
+const CACHE_NAME = 'lbc-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/css/styles.css',
   '/js/app.js',
-  '/js/auth.js',
-  '/js/drive.js',
-  '/js/sheets.js',
+  '/js/backend.js',
   '/js/nightscout.js',
   '/js/dexcom.js',
   '/js/calculator.js',
@@ -19,8 +17,7 @@ const APP_SHELL = [
 ];
 
 const API_ORIGINS = [
-  'https://www.googleapis.com',
-  'https://accounts.google.com',
+  'https://script.google.com',
   'https://share2.dexcom.com',
   'https://shareous1.dexcom.com'
 ];
