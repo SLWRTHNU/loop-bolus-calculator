@@ -819,7 +819,8 @@ async function exportAndClearCurrentSheet() {
     } else {
       throw new Error('offline');
     }
-  } catch {
+  } catch (err) {
+    console.error('Export failed:', err);
     downloadCSV(flattenToCSVRows(meals));
     clearMeal(slug);
     showToast('Saved locally (offline)', 'info'); renderLogSection();
@@ -851,7 +852,8 @@ async function exportAndClearAllSheets() {
     } else {
       throw new Error('offline');
     }
-  } catch {
+  } catch (err) {
+    console.error('Export failed:', err);
     downloadCSV(flattenToCSVRows(meals));
     MEAL_SLUGS.forEach(clearMeal);
     showToast('Saved locally (offline)', 'info'); renderLogSection();
@@ -1133,8 +1135,9 @@ function setupExportTimer() {
             downloadCSV(flattenToCSVRows(meals));
             MEAL_SLUGS.forEach(clearMeal);
             showToast("Yesterday's log saved locally (offline)", 'info');
-          } catch {
-            downloadCSV(flattenToCSVRows(meals));
+          } catch (err) {
+     		  console.error('Export failed:', err);
+              downloadCSV(flattenToCSVRows(meals));
             MEAL_SLUGS.forEach(clearMeal);
             showToast("Yesterday's log saved locally (offline)", 'info');
           }
