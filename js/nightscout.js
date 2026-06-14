@@ -1,5 +1,5 @@
 import { storage } from './storage.js';
-import { mgdlToMmol } from './calculator.js';
+import { mgdlToMmol, mmolToMgdl } from './calculator.js';
 
 async function sha1(str) {
   const encoder = new TextEncoder();
