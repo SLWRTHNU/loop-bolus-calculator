@@ -184,6 +184,7 @@ export function elapsedMMSS(fromDate) {
 
 export function openRecipePanel() {
   closeFoodSearchPanel();
+  closeAddFoodPanel();
   const panel = document.getElementById('recipe-panel');
   if (panel) panel.hidden = false;
   document.getElementById('calculator-layout')?.classList.add('recipe-open');
@@ -197,6 +198,7 @@ export function closeRecipePanel() {
 
 export function openFoodSearchPanel() {
   closeRecipePanel();
+  closeAddFoodPanel();
   const panel = document.getElementById('food-search-panel');
   if (panel) panel.hidden = false;
   document.getElementById('calculator-layout')?.classList.add('recipe-open');
@@ -204,6 +206,20 @@ export function openFoodSearchPanel() {
 
 export function closeFoodSearchPanel() {
   const panel = document.getElementById('food-search-panel');
+  if (panel) panel.hidden = true;
+  document.getElementById('calculator-layout')?.classList.remove('recipe-open');
+}
+
+export function openAddFoodPanel() {
+  closeRecipePanel();
+  closeFoodSearchPanel();
+  const panel = document.getElementById('add-food-panel');
+  if (panel) panel.hidden = false;
+  document.getElementById('calculator-layout')?.classList.add('recipe-open');
+}
+
+export function closeAddFoodPanel() {
+  const panel = document.getElementById('add-food-panel');
   if (panel) panel.hidden = true;
   document.getElementById('calculator-layout')?.classList.remove('recipe-open');
 }

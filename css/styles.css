@@ -1043,6 +1043,47 @@ select { cursor: pointer; }
 }
 #food-search-results { margin-top: 12px; }
 
+/* ── Add Food Panel ──────────────────────────────────────────────────────── */
+
+.add-food-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 11px; }
+.add-food-row .field { margin-bottom: 0; }
+
+.field-status { font-size: 0.8em; margin-top: 4px; font-weight: 600; min-height: 1em; }
+.status-error { color: var(--error); }
+
+.match-list {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  max-height: 140px; overflow-y: auto; box-shadow: var(--shadow); margin-top: 2px;
+}
+.match-item { padding: 7px 10px; font-size: 0.8rem; cursor: pointer; border-bottom: 1px solid var(--border); }
+.match-item:last-child { border-bottom: none; }
+.match-item:hover { background: var(--accent-light); }
+
+.checkbox-row {
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: 11px; font-size: 0.8rem; color: var(--text-2); cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+
+.abs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.abs-box { background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; text-align: center; }
+.abs-box--highlight { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-light), inset 0 0 12px var(--accent-light); }
+.abs-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-2); margin-bottom: 5px; }
+.abs-val { font-size: 22px; font-weight: 600; line-height: 1; color: var(--success); }
+.abs-cat { font-size: 14px; font-weight: 700; line-height: 1; margin-top: 4px; }
+.abs-sub { font-size: 9px; color: var(--text-2); margin-top: 3px; }
+
+.speed-bar { background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; }
+.speed-bar-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-2); margin-bottom: 7px; }
+.speed-track { height: 6px; background: var(--bg-3); border-radius: 99px; overflow: hidden; }
+.speed-fill { height: 100%; border-radius: 99px; background: var(--warning); width: 33%; transition: width 0.4s ease, background 0.4s ease; }
+.speed-ticks { display: flex; justify-content: space-between; margin-top: 4px; }
+.speed-ticks span { font-size: 0.65em; color: var(--text-2); }
+
+.override-note { font-size: 0.75em; color: var(--text-2); font-style: italic; margin-top: 3px; }
+
 /* ── Mobile (< 600px): single column ────────────────────────────────────── */
 @media (max-width: 599px) {
   .calc-grid { grid-template-columns: 1fr; grid-template-rows: auto; }

@@ -1,7 +1,8 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood } from './backend.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood } from './backend.js';
+import { estimateAbsorption } from './absorption.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
@@ -11,7 +12,8 @@ import {
   showSpinner, hideSpinner,
   formatTime, todayStr, elapsedMMSS,
   toggleToolsDropdown, openRecipePanel, closeRecipePanel,
-  openFoodSearchPanel, closeFoodSearchPanel
+  openFoodSearchPanel, closeFoodSearchPanel,
+  openAddFoodPanel, closeAddFoodPanel
 } from './ui.js';
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -63,8 +65,10 @@ async function init() {
   setupToolsMenu();
   setupRecipePanel();
   setupFoodSearchPanel();
+  setupAddFoodPanel();
   setupPostMealTracker();
   setupExportTimer();
+  setInterval(refreshFoodChart, 60000);
   navigate(getCurrentSection());
   window.scrollTo(0, 0);
 
@@ -676,6 +680,20 @@ function setupToolsMenu() {
       closeFoodSearchPanel();
     }
   });
+  document.getElementById('tools-add-food')?.addEventListener('click', () => {
+    document.getElementById('tools-dropdown').hidden = true;
+    const panel = document.getElementById('add-food-panel');
+    if (panel?.hidden) {
+      openAddFoodPanel();
+      const note = document.getElementById('add-food-offline-note');
+      if (note) note.hidden = state.connected;
+      document.querySelectorAll('#add-food-panel input, #add-food-panel select, #add-food-panel button')
+        .forEach(el => { if (el.id !== 'close-add-food-btn') el.disabled = !state.connected || el.id === 'add-food-cf'; });
+      if (state.connected) document.getElementById('add-food-name')?.focus();
+    } else {
+      closeAddFoodPanel();
+    }
+  });
   document.getElementById('tools-tracker')?.addEventListener('click', () => {
     document.getElementById('tools-dropdown').hidden = true;
     const tracker = document.getElementById('post-meal-tracker');
@@ -738,6 +756,158 @@ function renderFoodSearchResults(rows, query) {
         ${r.url ? `<div class="food-search-link"><a href="${r.url}" target="_blank">View Log ↗</a></div>` : ''}
       </div>`;
   }).join('');
+}
+
+// ─── ADD FOOD PANEL ──────────────────────────────────────────────────────────
+
+function setupAddFoodPanel() {
+  document.getElementById('close-add-food-btn')?.addEventListener('click', closeAddFoodPanel);
+
+  document.getElementById('add-food-portion')?.addEventListener('input', addFoodCalcFactor);
+  document.getElementById('add-food-total-carbs')?.addEventListener('input', addFoodCalcFactor);
+  document.getElementById('add-food-fiber')?.addEventListener('input', addFoodCalcFactor);
+  document.getElementById('add-food-fat')?.addEventListener('input', () => addFoodRecalcAbsorption());
+  document.getElementById('add-food-protein')?.addEventListener('input', () => addFoodRecalcAbsorption());
+  document.getElementById('add-food-method')?.addEventListener('change', () => addFoodRecalcAbsorption());
+  document.getElementById('add-food-texture')?.addEventListener('change', () => addFoodRecalcAbsorption());
+  document.getElementById('add-food-mixed')?.addEventListener('change', () => addFoodRecalcAbsorption());
+  document.getElementById('add-food-absorption')?.addEventListener('input', e => {
+    const val = parseFloat(e.target.value);
+    if (!isNaN(val)) addFoodUpdateAbsorptionUI(val);
+  });
+  document.getElementById('add-food-name')?.addEventListener('input', addFoodCheckName);
+  document.getElementById('add-food-submit-btn')?.addEventListener('click', addFoodSubmit);
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#add-food-name')?.parentElement?.contains?.(e.target) &&
+        !e.target.closest('#add-food-matches')) {
+      const m = document.getElementById('add-food-matches'); if (m) m.hidden = true;
+    }
+  });
+}
+
+function addFoodCalcFactor() {
+  const portion = parseFloat(document.getElementById('add-food-portion')?.value) || 0;
+  const carbs   = parseFloat(document.getElementById('add-food-total-carbs')?.value) || 0;
+  const fiber   = parseFloat(document.getElementById('add-food-fiber')?.value) || 0;
+  const net = Math.max(0, carbs - fiber);
+  const raw = portion > 0 ? (net / portion) : 0;
+  setVal('add-food-cf', (Math.floor(raw * 100) / 100).toFixed(2));
+  addFoodRecalcAbsorption(net);
+  addFoodValidate();
+}
+
+function addFoodRecalcAbsorption(netOverride) {
+  const carbs = parseFloat(document.getElementById('add-food-total-carbs')?.value) || 0;
+  const fiber = parseFloat(document.getElementById('add-food-fiber')?.value) || 0;
+  const net = typeof netOverride === 'number' ? netOverride : Math.max(0, carbs - fiber);
+
+  const hours = estimateAbsorption({
+    netCarbs: net,
+    fat: parseFloat(document.getElementById('add-food-fat')?.value) || 0,
+    protein: parseFloat(document.getElementById('add-food-protein')?.value) || 0,
+    method: document.getElementById('add-food-method')?.value || '',
+    texture: document.getElementById('add-food-texture')?.value || '',
+    mixedMeal: document.getElementById('add-food-mixed')?.checked || false
+  });
+  setVal('add-food-absorption', hours);
+  addFoodUpdateAbsorptionUI(hours);
+}
+
+function addFoodUpdateAbsorptionUI(hours) {
+  hours = parseFloat(hours);
+  setText('add-food-abs-hours', hours.toFixed(1));
+  let cat, sub, color;
+  if      (hours <= 2) { cat = 'Fast';      sub = 'high GI';            color = 'var(--error)'; }
+  else if (hours <= 3) { cat = 'Medium';    sub = 'moderate GI';        color = 'var(--warning)'; }
+  else if (hours <= 5) { cat = 'Slow';      sub = 'low GI / fat';       color = 'var(--success)'; }
+  else                 { cat = 'Very Slow'; sub = 'high fat / protein'; color = 'var(--accent)'; }
+  const catEl = document.getElementById('add-food-abs-category');
+  if (catEl) { catEl.textContent = cat; catEl.style.color = color; }
+  setText('add-food-abs-gi', sub);
+  const pct = Math.min(95, Math.max(5, ((hours - 2) / 4) * 90 + 5));
+  const fill = document.getElementById('add-food-speed-fill');
+  if (fill) { fill.style.width = pct + '%'; fill.style.background = color; }
+}
+
+function addFoodCheckName() {
+  const val = document.getElementById('add-food-name')?.value.trim().toLowerCase() || '';
+  const matchesDiv = document.getElementById('add-food-matches');
+  const statusDiv  = document.getElementById('add-food-name-status');
+  if (!matchesDiv || !statusDiv) return;
+
+  if (val.length < 2) { matchesDiv.hidden = true; statusDiv.textContent = ''; statusDiv.className = 'field-status'; addFoodValidate(); return; }
+
+  const exact    = state.personalFoods.find(f => f.name.toLowerCase() === val);
+  const partials = state.personalFoods.filter(f => f.name.toLowerCase().includes(val) && f.name.toLowerCase() !== val);
+
+  if (exact) { statusDiv.textContent = '⚠ Food already exists'; statusDiv.className = 'field-status status-error'; }
+  else       { statusDiv.textContent = ''; statusDiv.className = 'field-status'; }
+
+  if (partials.length) {
+    matchesDiv.innerHTML = partials.slice(0, 8).map(p =>
+      `<div class="match-item" data-name="${escHtml(p.name)}" data-cf="${p.cf}" data-abs="${p.abs}">${escHtml(p.name)}</div>`
+    ).join('');
+    matchesDiv.hidden = false;
+    matchesDiv.querySelectorAll('.match-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.getElementById('add-food-name').value = item.dataset.name;
+        setVal('add-food-cf', (Math.floor(parseFloat(item.dataset.cf) * 100) / 100).toFixed(2));
+        setVal('add-food-absorption', item.dataset.abs);
+        addFoodUpdateAbsorptionUI(parseFloat(item.dataset.abs));
+        matchesDiv.hidden = true;
+        addFoodCheckName();
+      });
+    });
+  } else {
+    matchesDiv.hidden = true;
+  }
+  addFoodValidate();
+}
+
+function addFoodValidate() {
+  const name    = document.getElementById('add-food-name')?.value.trim();
+  const portion = document.getElementById('add-food-portion')?.value;
+  const isDupe  = document.getElementById('add-food-name-status')?.classList.contains('status-error');
+  const btn = document.getElementById('add-food-submit-btn');
+  if (btn) btn.disabled = !name || !portion || isDupe || !state.connected;
+}
+
+async function addFoodSubmit() {
+  const name = document.getElementById('add-food-name')?.value.trim();
+  const cf   = parseFloat(document.getElementById('add-food-cf')?.value) || 0;
+  const abs  = parseFloat(document.getElementById('add-food-absorption')?.value) || 3.0;
+  const btn = document.getElementById('add-food-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  try {
+    const result = await addFood({ name, cf, abs });
+    if (!result?.success) throw new Error(result?.error || 'Add failed');
+    state.personalFoods = await getFoodChart();
+    showToast(`${name} added to Food Chart`, 'success');
+    addFoodClearFields();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.textContent = 'Add to Food Chart';
+    addFoodValidate();
+  }
+}
+
+function addFoodClearFields() {
+  ['add-food-name','add-food-portion','add-food-total-carbs','add-food-fiber','add-food-fat','add-food-protein']
+    .forEach(id => setVal(id, ''));
+  setVal('add-food-cf', '0.00');
+  setVal('add-food-absorption', '3.0');
+  setVal('add-food-method', ''); setVal('add-food-texture', '');
+  const mixed = document.getElementById('add-food-mixed'); if (mixed) mixed.checked = false;
+  const status = document.getElementById('add-food-name-status'); if (status) { status.textContent = ''; status.className = 'field-status'; }
+  addFoodUpdateAbsorptionUI(3.0);
+  addFoodValidate();
+}
+
+async function refreshFoodChart() {
+  if (!state.connected) return;
+  try { state.personalFoods = await getFoodChart(); } catch {}
 }
 
 // ─── BOLUS GIVEN ─────────────────────────────────────────────────────────────

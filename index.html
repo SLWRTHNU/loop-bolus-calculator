@@ -58,6 +58,7 @@
           <button id="tools-export-all" role="menuitem">Export All Sheets (Today)</button>
           <button id="tools-recipe" role="menuitem">Recipe Builder</button>
           <button id="tools-food-search" role="menuitem">Food Search</button>
+          <button id="tools-add-food" role="menuitem">Add Food to Chart</button>
           <button id="tools-tracker" role="menuitem">Post-Meal BG Tracker</button>
         </div>
       </div>
@@ -550,6 +551,98 @@
         Food Search requires an internet connection.
       </p>
       <div id="food-search-results"></div>
+    </aside>
+
+    <!-- ── Add Food to Chart Panel ───────────────────────────────────────── -->
+    <aside class="recipe-panel" id="add-food-panel" hidden aria-label="Add Food to Chart">
+      <div class="recipe-panel__header">
+        <span class="recipe-panel__title">Add Food to Chart</span>
+        <button class="btn btn--icon" id="close-add-food-btn" aria-label="Close add food">×</button>
+      </div>
+
+      <p class="tools-dropdown-note" id="add-food-offline-note" hidden>
+        Adding foods requires an internet connection.
+      </p>
+
+      <div class="recipe-section-label">Food Details</div>
+      <div class="field" style="position:relative">
+        <label for="add-food-name">Food Name</label>
+        <input type="text" class="input input--sm" id="add-food-name" placeholder="Start typing…" autocomplete="off" />
+        <div id="add-food-matches" class="match-list" hidden></div>
+        <div id="add-food-name-status" class="field-status"></div>
+      </div>
+      <div class="add-food-row">
+        <div class="field"><label for="add-food-portion">Portion (g)</label>
+          <input type="number" class="input input--sm" id="add-food-portion" min="0" step="0.1" /></div>
+        <div class="field"><label for="add-food-total-carbs">Total Carbs (g)</label>
+          <input type="number" class="input input--sm" id="add-food-total-carbs" min="0" step="0.1" /></div>
+      </div>
+      <div class="add-food-row">
+        <div class="field"><label for="add-food-fiber">Fiber (g)</label>
+          <input type="number" class="input input--sm" id="add-food-fiber" min="0" step="0.1" /></div>
+        <div class="field"><label for="add-food-cf">Carb Factor</label>
+          <input type="text" class="input input--sm" id="add-food-cf" disabled value="0.00" /></div>
+      </div>
+      <div class="add-food-row">
+        <div class="field"><label for="add-food-fat">Fat (g)</label>
+          <input type="number" class="input input--sm" id="add-food-fat" min="0" step="0.1" /></div>
+        <div class="field"><label for="add-food-protein">Protein (g)</label>
+          <input type="number" class="input input--sm" id="add-food-protein" min="0" step="0.1" /></div>
+      </div>
+
+      <div class="recipe-section-label">Preparation</div>
+      <div class="add-food-row">
+        <div class="field"><label for="add-food-method">Cooking Method</label>
+          <select class="input input--sm" id="add-food-method">
+            <option value="">Select…</option>
+            <option value="toasted">Toasted</option>
+            <option value="air_fryer">Air fryer</option>
+            <option value="baked">Baked</option>
+            <option value="fried">Fried</option>
+            <option value="pan_fried_oil">Pan-fried (with oil)</option>
+            <option value="boiled_steamed">Boiled / steamed</option>
+            <option value="raw">Raw</option>
+            <option value="other">Other</option>
+          </select></div>
+        <div class="field"><label for="add-food-texture">Texture / Form</label>
+          <select class="input input--sm" id="add-food-texture">
+            <option value="">Select…</option>
+            <option value="liquid">Liquid</option>
+            <option value="blended">Blended</option>
+            <option value="mashed_soft">Mashed / soft</option>
+            <option value="solid">Solid</option>
+          </select></div>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="add-food-mixed" />
+        <span>Usually eaten as part of a mixed meal</span>
+      </label>
+
+      <div class="recipe-section-label">Absorption Estimate</div>
+      <div class="abs-grid">
+        <div class="abs-box abs-box--highlight">
+          <div class="abs-label">Time</div>
+          <div class="abs-val" id="add-food-abs-hours">3.0</div>
+          <div class="abs-sub">hours</div>
+        </div>
+        <div class="abs-box">
+          <div class="abs-label">Speed</div>
+          <div class="abs-cat" id="add-food-abs-category">Medium</div>
+          <div class="abs-sub" id="add-food-abs-gi">moderate GI</div>
+        </div>
+      </div>
+      <div class="speed-bar">
+        <div class="speed-bar-labels"><span>Fast</span><span>Slow</span></div>
+        <div class="speed-track"><div class="speed-fill" id="add-food-speed-fill"></div></div>
+        <div class="speed-ticks"><span>2h</span><span>3h</span><span>4h</span><span>5h</span><span>6h</span></div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label for="add-food-absorption">Absorption Rate (hours)</label>
+        <input type="number" class="input input--sm" id="add-food-absorption" value="3.0" step="0.5" />
+        <p class="override-note">Auto-calculated above — edit to override</p>
+      </div>
+
+      <button class="btn btn--primary btn--sm mb-8" id="add-food-submit-btn" disabled style="width:100%;margin-top:14px">Add to Food Chart</button>
     </aside>
 
   </div><!-- /calculator-layout -->
