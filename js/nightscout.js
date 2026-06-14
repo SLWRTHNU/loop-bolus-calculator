@@ -51,8 +51,11 @@ export async function fetchCOB() {
 
 export async function fetchProfile(units) {
   const data = await nsGet('/api/v1/profile.json');
-  const profileName = data.defaultProfile || Object.keys(data.store || {})[0];
-  const profile = data.store?.[profileName];
+  const doc = Array.isArray(data) ? data[0] : data;
+  if (!doc) throw new Error('No active profile');
+
+  const profileName = doc.defaultProfile || Object.keys(doc.store || {})[0];
+  const profile = doc.store?.[profileName];
   if (!profile) throw new Error('No active profile');
 
   const now = new Date();
