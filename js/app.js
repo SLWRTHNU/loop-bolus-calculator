@@ -494,10 +494,11 @@ function performFoodSearch(query, inputEl, onSelect) {
   const q = (query || '').toLowerCase().trim();
   let personal, builtin;
   if (!q) {
-    personal = state.personalFoods.slice(0, 5);
+    personal = state.personalFoods.slice(0, 5).map(f => ({ name: f.name, carbFactor: f.cf, absorptionRate: f.abs, source: 'personal' }));
     builtin  = HEALTH_CANADA_FOODS.slice(0, Math.max(0, 5 - personal.length));
   } else {
-    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
+    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5)
+      .map(f => ({ name: f.name, carbFactor: f.cf, absorptionRate: f.abs, source: 'personal' }));
     builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
   }
   const results = [...personal, ...builtin].slice(0, 8);
