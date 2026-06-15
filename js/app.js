@@ -1072,7 +1072,7 @@ async function exportCurrentSheet() {
   try {
     if (state.connected) {
       showToast('Exporting…', 'info');
-      const result = await logMeal({ meals });
+      const result = await logMeal({ meals, units: state.units });
       if (!result?.success) throw new Error(result?.error || 'Export failed');
       storage.set('last_export_date', todayStr());
       showToast('Exported to Drive', 'success'); renderLogSection();
@@ -1093,7 +1093,7 @@ async function exportAllSheets() {
   try {
     if (state.connected) {
       showToast('Exporting all meals…', 'info');
-      const result = await logMeal({ meals });
+      const result = await logMeal({ meals, units: state.units });
       if (!result?.success) throw new Error(result?.error || 'Export failed');
       storage.set('last_export_date', todayStr());
       showToast('Exported to Drive', 'success'); renderLogSection();
@@ -1371,7 +1371,7 @@ function setupExportTimer() {
         if (meals.length > 0) {
           try {
             if (state.connected) {
-              const result = await logMeal({ meals });
+              const result = await logMeal({ meals, units: state.units });
               if (result?.success) {
                 storage.set('last_export_date', yesterday);
                 MEAL_SLUGS.forEach(clearMeal);
