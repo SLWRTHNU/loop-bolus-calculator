@@ -1475,7 +1475,7 @@ function recordAutoPostMealReading(slug, lockedAt, bg, now) {
     time: hhmm(now),
     minSinceBolus: roundedMin,
     bg: bg.value,
-    trend: bg.trend || '→',
+    trend: bg.trend || '',
     delta
   });
 
