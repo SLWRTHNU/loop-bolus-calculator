@@ -52,7 +52,7 @@ export async function searchFood(query) {
   return r.success ? r.rows : [];
 }
 
-export async function logMeal(rows) {
-  // rows: array of [date, meal, food, carbFactor, weight, netCarbs, notes]
-  return backendPost('logMeal', { rows });
+export async function logMeal(payload) {
+  // payload: { meals: [...] } — rich per-meal objects for pretty Doc export
+  return backendPost('logMeal', payload);
 }

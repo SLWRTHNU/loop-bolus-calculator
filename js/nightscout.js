@@ -1,5 +1,5 @@
 import { storage } from './storage.js';
-import { mgdlToMmol } from './calculator.js';
+import { mgdlToMmol, mmolToMgdl } from './calculator.js';
 
 async function sha1(str) {
   const encoder = new TextEncoder();
@@ -14,7 +14,7 @@ async function nsGet(path) {
   if (!url) throw new Error('Nightscout URL not configured');
 
   const base = url.replace(/\/$/, '');
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {};
   if (secret) headers['api-secret'] = await sha1(secret);
 
   const resp = await fetch(`${base}${path}`, { headers });
@@ -51,8 +51,11 @@ export async function fetchCOB() {
 
 export async function fetchProfile(units) {
   const data = await nsGet('/api/v1/profile.json');
-  const profileName = data.defaultProfile || Object.keys(data.store || {})[0];
-  const profile = data.store?.[profileName];
+  const doc = Array.isArray(data) ? data[0] : data;
+  if (!doc) throw new Error('No active profile');
+
+  const profileName = doc.defaultProfile || Object.keys(doc.store || {})[0];
+  const profile = doc.store?.[profileName];
   if (!profile) throw new Error('No active profile');
 
   const now = new Date();
@@ -70,10 +73,17 @@ export async function fetchProfile(units) {
   const targetHighRaw = getActiveValue(profile.target_high);
   const targetLowRaw = getActiveValue(profile.target_low);
 
+  // Nightscout profiles store sens/target in whatever unit the profile itself
+  // is set up in (profile.units), which may differ from the app's display
+  // units. Only convert if they actually differ.
+  const profileIsMmol = String(profile.units || 'mg/dl').toLowerCase().startsWith('mmol');
+  const displayIsMmol = units === 'mmol';
+
   const convert = v => {
     if (v == null) return null;
-    if (units === 'mmol') return Math.round(mgdlToMmol(v) * 10) / 10;
-    return Math.round(v);
+    if (profileIsMmol && !displayIsMmol) return Math.round(mmolToMgdl(v));
+    if (!profileIsMmol && displayIsMmol) return Math.round(mgdlToMmol(v) * 10) / 10;
+    return displayIsMmol ? Math.round(v * 10) / 10 : Math.round(v);
   };
 
   return {

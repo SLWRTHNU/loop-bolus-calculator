@@ -143,7 +143,7 @@
             </div>
 
             <!-- Card 2: Factors (col 2, row 1) -->
-            <div class="card" id="bg-panel" style="grid-column:2;grid-row:1">
+            <div class="card" id="bg-panel" style="grid-column:2;grid-row:1;position:relative">
               <div class="card__title">Factors</div>
 
               <div class="inline-field">
@@ -175,6 +175,10 @@
               <button class="btn btn--secondary btn--sm" id="fetch-profile-btn" hidden style="margin-top:10px">
                 Pull from Nightscout
               </button>
+
+              <div class="factors-sync-status" id="factors-sync-status" hidden>
+                Updated <span id="sync-ago">--:--</span> ago
+              </div>
             </div>
 
             <!-- Card 3: Insulin Dose (col 3, rows 1–2) -->

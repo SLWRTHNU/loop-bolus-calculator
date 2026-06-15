@@ -28,6 +28,7 @@ let state = {
   bolusLockedAt: {},
   mealLockedAt: {},
   bolusTimerID: null,
+  nsPollID: null,
   recipes: [],
   activeRecipeIndex: 0
 };
@@ -36,6 +37,7 @@ MEAL_SLUGS.forEach(slug => {
   state.meals[slug] = {
     foods: [], currentBG: '', iob: '', cob: '',
     postBgReadings: [], notes: '', bgTimestamp: null, bgTrend: null,
+    lastSyncAt: null,
     entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 }
   };
   state.bolusLockedAt[slug] = null;
@@ -75,6 +77,8 @@ async function init() {
   state.connected = await ping();
   updateConnectionStatus();
   if (state.connected) await postBackendSetup();
+  setupNightscoutPolling();
+  setInterval(updateSyncIndicator, 1000);
 }
 
 async function postBackendSetup() {
@@ -84,6 +88,7 @@ async function postBackendSetup() {
     state.personalFoods = await getFoodChart();
     renderAll();
     renderSettingsSection();
+    setupNightscoutPolling();
   } catch (err) { showToast('Backend sync error: ' + err.message, 'error'); }
 }
 
@@ -152,6 +157,7 @@ function renderAll() {
   renderLogSection();
   setVal('meal-notes', getCurrentMeal().notes || '');
   renderPostMealTracker();
+  updateSyncIndicator();
   // Restore per-tab entry food DOM
   const ef = getCurrentMeal().entryFood;
   const searchInput = document.getElementById('entry-food-search'); if (searchInput) searchInput.value = ef.name || '';
@@ -641,7 +647,7 @@ function setupNavigation() {
   document.getElementById('save-ns-btn')?.addEventListener('click', () => {
     const url = document.getElementById('ns-url')?.value?.trim(); const secret = document.getElementById('ns-secret')?.value?.trim();
     storage.set('ns_config', { url, secret }); persistConfig({ nightscout_url: url, nightscout_secret: secret });
-    renderMealSettingsPanel(); showToast('Nightscout settings saved', 'success');
+    renderMealSettingsPanel(); setupNightscoutPolling(); showToast('Nightscout settings saved', 'success');
   });
   document.getElementById('save-dex-btn')?.addEventListener('click', () => {
     const user = document.getElementById('dex-user')?.value?.trim(); const pass = document.getElementById('dex-pass')?.value?.trim(); const region = document.getElementById('dex-region')?.value;
@@ -911,6 +917,90 @@ async function refreshFoodChart() {
   try { state.personalFoods = await getFoodChart(); } catch {}
 }
 
+// ─── EXPORT PAYLOAD BUILDERS ─────────────────────────────────────────────────
+
+function buildMealExportPayload(slug) {
+  const meal = state.meals[slug];
+  const settings = getMealSettings(slug);
+  const bolusTimeAt = state.bolusLockedAt[slug];
+  const eatTimeAt   = state.mealLockedAt[slug];
+
+  const bolus = calcBolus({
+    foods: meal.foods,
+    currentBG: parseFloat(meal.currentBG) || null,
+    targetBG: settings.target_bg,
+    icr: settings.icr,
+    isf: settings.isf,
+    iob: parseFloat(meal.iob) || 0
+  });
+
+  return {
+    name: MEAL_LABELS[slug],
+    foods: meal.foods.map(f => ({
+      name: f.name,
+      source: f.source || '',
+      carbFactor: f.carbFactor,
+      absorptionRate: f.absorptionRate,
+      weightGiven: f.weightG,
+      netCarbs: calcNetCarbs(parseFloat(f.weightG) || 0, f.carbFactor || 0)
+    })),
+    carbRatio: settings.icr,
+    target: settings.target_bg,
+    isf: settings.isf,
+    currentBG: meal.currentBG,
+    totalNetCarbs: bolus.totalNetCarbs,
+    iob: meal.iob,
+    cob: meal.cob,
+    mealBolus: bolus.mealBolus,
+    correctionBolus: bolus.correctionBolus,
+    totalBolus: bolus.totalBolus,
+    bolusTime: bolusTimeAt ? hhmm(bolusTimeAt) : '',
+    eatTime: eatTimeAt ? hhmm(eatTimeAt) : '',
+    postMealReadings: (meal.postBgReadings || [])
+      .filter(r => r.time || r.bg)
+      .map(r => ({
+        time: r.time, minSinceBolus: r.minSinceBolus,
+        bg: r.bg, trend: r.trend, delta: r.delta
+      })),
+    notes: meal.notes || ''
+  };
+}
+
+function buildDayExportPayload(slugs) {
+  const meals = slugs
+    .map(buildMealExportPayload)
+    .filter(m => m.foods.length > 0);
+  return meals;
+}
+
+function flattenToCSVRows(meals) {
+  const date = todayStr();
+  const rows = [];
+  meals.forEach(m => m.foods.forEach(f => {
+    rows.push([date, m.name, f.name, f.carbFactor, f.weightGiven, f.netCarbs, m.notes]);
+  }));
+  return rows;
+}
+
+function downloadCSV(rows) {
+  const headers = ['Date', 'Meal', 'Food', 'Carb Factor', 'Weight (g)', 'Net Carbs (g)', 'Notes'];
+  const csv = [headers, ...rows].map(row =>
+    row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+
+  const date = new Date();
+  const monthName = date.toLocaleString('en-CA', { month: 'long' });
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  const filename = `Loop Bolus - ${monthName} ${day} ${year}.csv`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
 // ─── BOLUS GIVEN ─────────────────────────────────────────────────────────────
 
 function handleBolusGiven() {
@@ -958,7 +1048,13 @@ function entriesToRows(entries) {
 }
 
 function clearMeal(slug) {
-  state.meals[slug].foods = []; renderFoodTable(); updateBolusLive();
+  state.meals[slug].foods = [];
+  state.meals[slug].notes = '';
+  state.meals[slug].postBgReadings = [];
+  state.bolusLockedAt[slug] = null;
+  state.mealLockedAt[slug] = null;
+  renderAll();
+  updateBolusLive();
 }
 
 function clearCurrentMeal() {
@@ -969,39 +1065,46 @@ function clearCurrentMeal() {
 }
 
 async function exportCurrentSheet() {
-  const slug = state.activeMeal; const entries = buildLogEntries(slug, state.meals[slug]);
-  if (!entries.length) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
-  const dateStr = todayStr();
-  if (state.connected) {
-    try {
+  const slug = state.activeMeal;
+  const meals = buildDayExportPayload([slug]);
+  if (meals.length === 0) { showToast('No foods to export for ' + MEAL_LABELS[slug], 'error'); return; }
+
+  try {
+    if (state.connected) {
       showToast('Exporting…', 'info');
-      const result = await logMeal(entriesToRows(entries));
+      const result = await logMeal({ meals });
       if (!result?.success) throw new Error(result?.error || 'Export failed');
-      storage.set('last_export_date', dateStr);
+      storage.set('last_export_date', todayStr());
       showToast('Exported to Drive', 'success'); renderLogSection();
-      return;
-    } catch {}
+    } else {
+      throw new Error('offline');
+    }
+  } catch (err) {
+    console.error('Export failed:', err);
+    downloadCSV(flattenToCSVRows(meals));
+    showToast('Saved locally (offline)', 'info'); renderLogSection();
   }
-  downloadLocalCSV(entries, dateStr);
-  showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
 async function exportAllSheets() {
-  const allEntries = []; MEAL_SLUGS.forEach(slug => { allEntries.push(...buildLogEntries(slug, state.meals[slug])); });
-  if (!allEntries.length) { showToast('No foods to export', 'error'); return; }
-  const dateStr = todayStr();
-  if (state.connected) {
-    try {
+  const meals = buildDayExportPayload(MEAL_SLUGS);
+  if (meals.length === 0) { showToast('No foods to export', 'error'); return; }
+
+  try {
+    if (state.connected) {
       showToast('Exporting all meals…', 'info');
-      const result = await logMeal(entriesToRows(allEntries));
+      const result = await logMeal({ meals });
       if (!result?.success) throw new Error(result?.error || 'Export failed');
-      storage.set('last_export_date', dateStr);
+      storage.set('last_export_date', todayStr());
       showToast('Exported to Drive', 'success'); renderLogSection();
-      return;
-    } catch {}
+    } else {
+      throw new Error('offline');
+    }
+  } catch (err) {
+    console.error('Export failed:', err);
+    downloadCSV(flattenToCSVRows(meals));
+    showToast('Saved locally (offline)', 'info'); renderLogSection();
   }
-  downloadLocalCSV(allEntries, dateStr);
-  showToast('Saved locally (offline)', 'info'); renderLogSection();
 }
 
 async function exportToDrive() {
@@ -1264,21 +1367,25 @@ function setupExportTimer() {
       const yesterday = lastCheck; lastCheck = today;
       const lastExport = storage.get('last_export_date');
       if (lastExport !== yesterday) {
-        const log = getTodayLog();
-        if (log.length) {
+        const meals = buildDayExportPayload(MEAL_SLUGS);
+        if (meals.length > 0) {
           try {
             if (state.connected) {
-              const result = await logMeal(entriesToRows(log));
+              const result = await logMeal({ meals });
               if (result?.success) {
-                storage.set('last_export_date', yesterday); setTodayLog([]);
+                storage.set('last_export_date', yesterday);
+                MEAL_SLUGS.forEach(clearMeal);
                 showToast("Yesterday's log exported automatically", 'success');
                 return;
               }
             }
-            downloadLocalCSV(log, yesterday); setTodayLog([]);
+            downloadCSV(flattenToCSVRows(meals));
+            MEAL_SLUGS.forEach(clearMeal);
             showToast("Yesterday's log saved locally (offline)", 'info');
-          } catch {
-            downloadLocalCSV(log, yesterday); setTodayLog([]);
+          } catch (err) {
+     		  console.error('Export failed:', err);
+              downloadCSV(flattenToCSVRows(meals));
+            MEAL_SLUGS.forEach(clearMeal);
             showToast("Yesterday's log saved locally (offline)", 'info');
           }
         }
@@ -1292,6 +1399,79 @@ function setupExportTimer() {
 const _debouncedSetConfig = debounce(async (config) => {
   try { await setConfig(config); } catch {}
 }, 1000);
+
+// ─── NIGHTSCOUT POLLING ──────────────────────────────────────────────────────
+
+async function pollNightscout() {
+  const ns = storage.get('ns_config');
+  if (!ns?.url) return;
+
+  const [bgRes, iobRes, cobRes, profileRes] = await Promise.allSettled([
+    nsBG(state.units), nsIOB(), nsCOB(), nsProfile(state.units)
+  ]);
+
+  const bg      = bgRes.status === 'fulfilled'      ? bgRes.value      : null;
+  const iob     = iobRes.status === 'fulfilled'     ? iobRes.value     : null;
+  const cob     = cobRes.status === 'fulfilled'     ? cobRes.value     : null;
+  const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
+
+  const now = new Date();
+  const activeEl = document.activeElement;
+
+  MEAL_SLUGS.forEach(slug => {
+    if (state.bolusLockedAt[slug]) return; // frozen after bolus given
+
+    const meal = state.meals[slug];
+    const isActive = slug === state.activeMeal;
+
+    if (bg && !(isActive && activeEl?.id === 'bg-value')) {
+      meal.currentBG = bg.value; meal.bgTimestamp = bg.timestamp; meal.bgTrend = bg.trend || null;
+    }
+    if (iob && !(isActive && activeEl?.id === 'iob-value')) meal.iob = iob.value;
+    if (cob && !(isActive && activeEl?.id === 'cob-value')) meal.cob = cob.value;
+
+    if (profile) {
+      const updates = {};
+      if (profile.icr != null       && !(isActive && activeEl?.id === 'icr-input'))       updates.icr = profile.icr;
+      if (profile.isf != null       && !(isActive && activeEl?.id === 'isf-input'))       updates.isf = profile.isf;
+      if (profile.target_bg != null && !(isActive && activeEl?.id === 'target-bg-input')) updates.target_bg = profile.target_bg;
+      if (Object.keys(updates).length) setMealSettings(slug, updates);
+    }
+
+    meal.lastSyncAt = now;
+  });
+
+  renderBGPanel();
+  renderMealSettingsPanel();
+  updateBolusLive();
+  persistConfig();
+}
+
+function setupNightscoutPolling() {
+  if (state.nsPollID) clearInterval(state.nsPollID);
+  const ns = storage.get('ns_config');
+  if (!ns?.url) return;
+  pollNightscout();
+  state.nsPollID = setInterval(pollNightscout, 60000);
+}
+
+function updateSyncIndicator() {
+  const el    = document.getElementById('factors-sync-status');
+  const agoEl = document.getElementById('sync-ago');
+  if (!el || !agoEl) return;
+
+  const ns     = storage.get('ns_config');
+  const meal   = getCurrentMeal();
+  const locked = state.bolusLockedAt[state.activeMeal];
+
+  if (!ns?.url || locked || !meal.lastSyncAt) { el.hidden = true; return; }
+
+  el.hidden = false;
+  const secs = Math.floor((Date.now() - meal.lastSyncAt.getTime()) / 1000);
+  const mm = Math.floor(secs / 60);
+  const ss = secs % 60;
+  agoEl.textContent = `${mm}:${String(ss).padStart(2, '0')}`;
+}
 
 function persistConfig(overrides = {}) {
   const meals = {}; MEAL_SLUGS.forEach(slug => { meals[slug] = getMealSettings(slug); });
