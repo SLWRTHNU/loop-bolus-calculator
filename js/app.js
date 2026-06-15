@@ -1419,9 +1419,14 @@ async function pollNightscout() {
   const activeEl = document.activeElement;
 
   MEAL_SLUGS.forEach(slug => {
-    if (state.bolusLockedAt[slug]) return; // frozen after bolus given
-
     const meal = state.meals[slug];
+    const lockedAt = state.bolusLockedAt[slug];
+
+    if (lockedAt) {
+      if (bg) recordAutoPostMealReading(slug, lockedAt, bg, now);
+      return;
+    }
+
     const isActive = slug === state.activeMeal;
 
     if (bg && !(isActive && activeEl?.id === 'bg-value')) {
@@ -1445,6 +1450,36 @@ async function pollNightscout() {
   renderMealSettingsPanel();
   updateBolusLive();
   persistConfig();
+}
+
+function recordAutoPostMealReading(slug, lockedAt, bg, now) {
+  const meal = state.meals[slug];
+  const minSinceBolus = (now.getTime() - lockedAt.getTime()) / 60000;
+  if (minSinceBolus < 0 || minSinceBolus > 300) return;
+
+  const roundedMin = Math.round(minSinceBolus / 5) * 5;
+  const maxRecorded = meal.postBgReadings
+    .filter(r => typeof r.minSinceBolus === 'number')
+    .reduce((max, r) => Math.max(max, r.minSinceBolus), -1);
+
+  if (roundedMin <= maxRecorded || roundedMin > 300) return;
+
+  const prevBg = meal.postBgReadings.length
+    ? meal.postBgReadings[meal.postBgReadings.length - 1].bg
+    : (parseFloat(meal.currentBG) || null);
+  const delta = (prevBg != null && bg.value != null)
+    ? Math.round((bg.value - prevBg) * 10) / 10
+    : '';
+
+  meal.postBgReadings.push({
+    time: hhmm(now),
+    minSinceBolus: roundedMin,
+    bg: bg.value,
+    trend: bg.trend || '→',
+    delta
+  });
+
+  if (slug === state.activeMeal) renderPostMealTracker();
 }
 
 function setupNightscoutPolling() {
