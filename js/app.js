@@ -754,7 +754,7 @@ function renderFoodSearchResults(rows, query) {
       <div class="food-search-result">
         <div class="food-search-date">${dateStr}</div>
         <div class="food-search-meal">${escHtml(r.meal)}</div>
-        <div class="food-search-title">${highlightMatch(r.food, query)}</div>
+        <div class="food-search-title">${escHtml(r.food)}</div>
         <div class="food-search-stats">
           <div><span class="food-search-label">CF:</span> ${r.cf ?? '—'}</div>
           <div><span class="food-search-label">Weight:</span> ${r.wt ?? '—'} g</div>
