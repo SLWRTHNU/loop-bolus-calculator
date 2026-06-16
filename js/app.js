@@ -142,7 +142,10 @@ function timeInputToDate(timeStr) {
   if (d > new Date()) d.setDate(d.getDate() - 1);
   return d;
 }
-function hhmm(date) { return date.toTimeString().slice(0, 5); }
+
+function hhmm(date) {
+  return date.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 // ─── RENDER ──────────────────────────────────────────────────────────────────
 
