@@ -1482,7 +1482,7 @@ const _debouncedSetConfig = debounce(async (config) => {
 }, 1000);
 
 const _debouncedSetDraftState = debounce(async (data) => {
-  try { await setDraftState(data); } catch {}
+  try { await setDraftState(data); } catch (err) { console.error('setDraftState failed:', err); }
 }, 1000);
 
 function persistDraftState() {
