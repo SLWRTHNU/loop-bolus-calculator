@@ -22,15 +22,21 @@ async function nsGet(path) {
   return resp.json();
 }
 
+const TREND_ARROWS = {
+  TripleUp: '⤊', DoubleUp: '⇈', SingleUp: '↑', FortyFiveUp: '↗',
+  Flat: '→', FortyFiveDown: '↘', SingleDown: '↓', DoubleDown: '⇊',
+  TripleDown: '⤋', NotComputable: '-', RateOutOfRange: '⇕'
+};
+
 export async function fetchBG(units) {
   const data = await nsGet('/api/v1/entries/current.json');
   const entry = Array.isArray(data) ? data[0] : data;
   if (!entry) throw new Error('No BG reading');
-
   const mgdl = entry.sgv;
   const value = units === 'mmol' ? mgdlToMmol(mgdl) : mgdl;
   const timestamp = new Date(entry.date);
-  return { value, timestamp, raw: mgdl };
+  const trend = TREND_ARROWS[entry.direction] || '';
+  return { value, timestamp, raw: mgdl, trend };
 }
 
 export async function fetchIOB() {
