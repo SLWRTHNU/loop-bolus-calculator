@@ -1,7 +1,7 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood } from './backend.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState } from './backend.js';
 import { estimateAbsorption } from './absorption.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
@@ -86,9 +86,17 @@ async function postBackendSetup() {
     const config = await getConfig();
     if (config) { state.config = config; applyConfig(config); }
     state.personalFoods = await getFoodChart();
+
+    const draft = await getDraftState();
+    if (draft && draft.data && Object.keys(draft.data).length > 0) {
+      applyDraftToState(draft.data);
+    }
+
     renderAll();
     renderSettingsSection();
     setupNightscoutPolling();
+    clearBolusTimer();
+    startBolusTimerIfLocked();
   } catch (err) { showToast('Backend sync error: ' + err.message, 'error'); }
 }
 
@@ -145,6 +153,45 @@ function timeInputToDate(timeStr) {
 
 function hhmm(date) {
   return date.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function serializeMealsForDraft() {
+  const out = {};
+  MEAL_SLUGS.forEach(slug => {
+    const meal = state.meals[slug];
+    out[slug] = {
+      foods: meal.foods,
+      currentBG: meal.currentBG,
+      iob: meal.iob,
+      cob: meal.cob,
+      notes: meal.notes,
+      postBgReadings: meal.postBgReadings,
+      bgTimestamp: meal.bgTimestamp ? meal.bgTimestamp.toISOString() : null,
+      bgTrend: meal.bgTrend,
+      bolusLockedAt: state.bolusLockedAt[slug] ? state.bolusLockedAt[slug].toISOString() : null,
+      mealLockedAt: state.mealLockedAt[slug] ? state.mealLockedAt[slug].toISOString() : null
+    };
+  });
+  return out;
+}
+
+function applyDraftToState(draftData) {
+  if (!draftData) return;
+  MEAL_SLUGS.forEach(slug => {
+    const d = draftData[slug];
+    if (!d) return;
+    const meal = state.meals[slug];
+    meal.foods = d.foods || [];
+    meal.currentBG = d.currentBG ?? '';
+    meal.iob = d.iob ?? '';
+    meal.cob = d.cob ?? '';
+    meal.notes = d.notes || '';
+    meal.postBgReadings = d.postBgReadings || [];
+    meal.bgTimestamp = d.bgTimestamp ? new Date(d.bgTimestamp) : null;
+    meal.bgTrend = d.bgTrend || null;
+    state.bolusLockedAt[slug] = d.bolusLockedAt ? new Date(d.bolusLockedAt) : null;
+    state.mealLockedAt[slug]  = d.mealLockedAt  ? new Date(d.mealLockedAt)  : null;
+  });
 }
 
 // ─── RENDER ──────────────────────────────────────────────────────────────────
@@ -254,6 +301,9 @@ function setupTimingCard() {
   bolusInput?.addEventListener('input', e => {
     const d = timeInputToDate(e.target.value);
     state.bolusLockedAt[state.activeMeal] = d || null;
+    recalcPostMealMinutes(state.activeMeal);
+    renderPostMealTracker();
+    persistDraftState();
     clearBolusTimer(); startBolusTimerIfLocked();
   });
   bolusInput?.addEventListener('change', e => {
@@ -263,6 +313,7 @@ function setupTimingCard() {
   mealInput?.addEventListener('input', e => {
     const d = timeInputToDate(e.target.value);
     state.mealLockedAt[state.activeMeal] = d || null;
+    persistDraftState();
     clearBolusTimer(); startBolusTimerIfLocked();
   });
   mealInput?.addEventListener('change', e => {
@@ -273,6 +324,9 @@ function setupTimingCard() {
     const now = new Date();
     state.bolusLockedAt[state.activeMeal] = now;
     if (bolusInput) bolusInput.value = hhmm(now);
+    recalcPostMealMinutes(state.activeMeal);
+    renderPostMealTracker();
+    persistDraftState();
     clearBolusTimer(); startBolusTimerIfLocked();
   });
 
@@ -280,6 +334,7 @@ function setupTimingCard() {
     const now = new Date();
     state.mealLockedAt[state.activeMeal] = now;
     if (mealInput) mealInput.value = hhmm(now);
+    persistDraftState();
     clearBolusTimer(); startBolusTimerIfLocked();
   });
 }
@@ -311,6 +366,18 @@ function startBolusTimerIfLocked() {
   state.bolusTimerID = setInterval(tick, 1000);
 }
 function clearBolusTimer() { if (state.bolusTimerID) { clearInterval(state.bolusTimerID); state.bolusTimerID = null; } }
+
+function recalcPostMealMinutes(slug) {
+  const locked = state.bolusLockedAt[slug];
+  const meal = state.meals[slug];
+  if (!locked) return;
+  meal.postBgReadings.forEach(r => {
+    if (r.time) {
+      const t = timeInputToDate(r.time);
+      if (t) r.minSinceBolus = Math.round((t - locked) / 60000);
+    }
+  });
+}
 
 // ─── FOOD ENTRY ROW ──────────────────────────────────────────────────────────
 
@@ -518,7 +585,7 @@ function performFoodSearch(query, inputEl, onSelect) {
 
 // ─── BOLUS PANEL ─────────────────────────────────────────────────────────────
 
-function updateBolusLive() { renderBolusPanel(); }
+function updateBolusLive() { renderBolusPanel(); persistDraftState(); }
 
 function renderBolusPanel() {
   const meal = getCurrentMeal(); const settings = getCurrentMealSettings();
@@ -601,6 +668,8 @@ function renderSettingsSection() {
   const unitsSelect = document.getElementById('units-select'); if (unitsSelect) unitsSelect.value = state.units;
   const colorSelect = document.getElementById('color-theme-select'); if (colorSelect) colorSelect.value = storage.get('color_theme','green');
   const modeSelect  = document.getElementById('mode-select');  if (modeSelect)  modeSelect.value  = storage.get('mode','system');
+  const clearTimeInput = document.getElementById('clear-time-input');
+  if (clearTimeInput) clearTimeInput.value = state.config?.clear_time || '04:00';
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -623,7 +692,7 @@ function setupNavigation() {
 
   document.getElementById('bg-value')?.addEventListener('input',  e => { getCurrentMeal().currentBG = e.target.value; updateBolusLive(); });
   document.getElementById('iob-value')?.addEventListener('input', e => { getCurrentMeal().iob = e.target.value; updateBolusLive(); });
-  document.getElementById('cob-value')?.addEventListener('input', e => { getCurrentMeal().cob = e.target.value; });
+  document.getElementById('cob-value')?.addEventListener('input', e => { getCurrentMeal().cob = e.target.value; persistDraftState(); });
   document.getElementById('fetch-bg-btn')?.addEventListener('click',       fetchBG);
   document.getElementById('fetch-iob-btn')?.addEventListener('click',      fetchIOB);
   document.getElementById('fetch-cob-btn')?.addEventListener('click',      fetchCOB);
@@ -633,7 +702,7 @@ function setupNavigation() {
   document.getElementById('isf-input')?.addEventListener('input',       e => { setMealSettings(state.activeMeal, { isf:      parseFloat(e.target.value)||null }); persistConfig(); updateBolusLive(); });
   document.getElementById('target-bg-input')?.addEventListener('input', e => { setMealSettings(state.activeMeal, { target_bg: parseFloat(e.target.value)||null }); persistConfig(); updateBolusLive(); });
 
-  document.getElementById('meal-notes')?.addEventListener('input', e => { getCurrentMeal().notes = e.target.value; });
+  document.getElementById('meal-notes')?.addEventListener('input', e => { getCurrentMeal().notes = e.target.value; persistDraftState(); });
   document.getElementById('bolus-given-btn')?.addEventListener('click', handleBolusGiven);
   document.getElementById('export-log-btn')?.addEventListener('click',  exportToDrive);
 
@@ -659,6 +728,7 @@ function setupNavigation() {
   document.getElementById('units-select')?.addEventListener('change', e => { changeUnits(e.target.value); });
   document.getElementById('color-theme-select')?.addEventListener('change', e => { applyColorTheme(e.target.value); persistConfig({ color_theme: e.target.value }); });
   document.getElementById('mode-select')?.addEventListener('change',  e => { applyMode(e.target.value);  persistConfig({ mode: e.target.value }); });
+  document.getElementById('clear-time-input')?.addEventListener('change', e => { persistConfig({ clear_time: e.target.value }); });
 }
 
 // ─── TOOLS MENU ──────────────────────────────────────────────────────────────
@@ -1013,6 +1083,9 @@ function handleBolusGiven() {
   state.bolusLockedAt[slug] = now;
   const input = document.getElementById('bolus-time-input');
   if (input) input.value = hhmm(now);
+  recalcPostMealMinutes(slug);
+  renderPostMealTracker();
+  persistDraftState();
   clearBolusTimer(); startBolusTimerIfLocked();
   showToast('Bolus time set to now', 'success');
 }
@@ -1058,6 +1131,7 @@ function clearMeal(slug) {
   state.mealLockedAt[slug] = null;
   renderAll();
   updateBolusLive();
+  persistDraftState();
 }
 
 function clearCurrentMeal() {
@@ -1142,10 +1216,12 @@ function setupPostMealTracker() {
     const rows = getCurrentMeal().postBgReadings;
     rows.forEach((r, i) => { const t = new Date(locked.getTime() + (i+1) * interval * 60000); r.time = hhmm(t); r.minSinceBolus = (i+1) * interval; });
     renderPostMealTracker();
+    persistDraftState();
   });
   document.getElementById('add-bg-row-btn')?.addEventListener('click', () => {
     getCurrentMeal().postBgReadings.push({ time: '', minSinceBolus: '', bg: '', trend: '→', delta: '' });
     renderPostMealTracker();
+    persistDraftState();
   });
 }
 
@@ -1173,13 +1249,15 @@ function renderPostMealTracker() {
       const rd = getCurrentMeal().postBgReadings[i]; rd.time = e.target.value;
       const locked = state.bolusLockedAt[state.activeMeal];
       if (locked && e.target.value) { const rd2 = timeInputToDate(e.target.value); if (rd2) rd.minSinceBolus = Math.round((rd2 - locked) / 60000); row.querySelector('.post-min').textContent = rd.minSinceBolus; }
+      persistDraftState();
     });
     row.querySelector('[data-field="bg"]').addEventListener('input', e => {
       const rd = getCurrentMeal().postBgReadings[i]; rd.bg = parseFloat(e.target.value)||'';
       if (i > 0) { const prev = getCurrentMeal().postBgReadings[i-1]; if (prev.bg!=='' && rd.bg!=='') { const delta = Math.round((rd.bg-prev.bg)*10)/10; rd.delta = delta; row.querySelector('.post-delta').textContent = (delta>0?'+':'')+delta; } }
+      persistDraftState();
     });
-    row.querySelector('[data-field="trend"]').addEventListener('change', e => { getCurrentMeal().postBgReadings[i].trend = e.target.value; });
-    row.querySelector('[data-remove]').addEventListener('click', () => { getCurrentMeal().postBgReadings.splice(i, 1); renderPostMealTracker(); });
+    row.querySelector('[data-field="trend"]').addEventListener('change', e => { getCurrentMeal().postBgReadings[i].trend = e.target.value; persistDraftState(); });
+    row.querySelector('[data-remove]').addEventListener('click', () => { getCurrentMeal().postBgReadings.splice(i, 1); renderPostMealTracker(); persistDraftState(); });
     tbody.appendChild(row);
   });
 }
@@ -1403,6 +1481,15 @@ const _debouncedSetConfig = debounce(async (config) => {
   try { await setConfig(config); } catch {}
 }, 1000);
 
+const _debouncedSetDraftState = debounce(async (data) => {
+  try { await setDraftState(data); } catch {}
+}, 1000);
+
+function persistDraftState() {
+  if (!state.connected) return;
+  _debouncedSetDraftState(serializeMealsForDraft());
+}
+
 // ─── NIGHTSCOUT POLLING ──────────────────────────────────────────────────────
 
 async function pollNightscout() {
@@ -1481,6 +1568,7 @@ function recordAutoPostMealReading(slug, lockedAt, bg, now) {
     trend: bg.trend || '',
     delta
   });
+  persistDraftState();
 
   if (slug === state.activeMeal) renderPostMealTracker();
 }
