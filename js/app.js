@@ -1486,7 +1486,8 @@ const _debouncedSetDraftState = debounce(async (data) => {
 }, 1000);
 
 function persistDraftState() {
-  if (!state.connected) return;
+  if (!state.connected) { console.log('persistDraftState: not connected, skipping'); return; }
+  console.log('persistDraftState: calling debounced save');
   _debouncedSetDraftState(serializeMealsForDraft());
 }
 
