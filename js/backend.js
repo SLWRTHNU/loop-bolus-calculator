@@ -56,3 +56,12 @@ export async function logMeal(payload) {
   // payload: { meals: [...] } — rich per-meal objects for pretty Doc export
   return backendPost('logMeal', payload);
 }
+
+export async function getDraftState() {
+  const r = await backendGet('getDraftState');
+  return r.success ? r.draft : null;
+}
+
+export async function setDraftState(data) {
+  return backendPost('setDraftState', { data });
+}
