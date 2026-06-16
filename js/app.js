@@ -16,7 +16,7 @@ import {
   openAddFoodPanel, closeAddFoodPanel
 } from './ui.js';
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// ─── STATE ─────────────────────────────────────────────────────────────────── 
 
 let state = {
   activeMeal: 'breakfast',
