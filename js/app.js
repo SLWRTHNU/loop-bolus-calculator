@@ -1,9 +1,10 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState } from './backend.js';
-import { estimateAbsorption } from './absorption.js';
-import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
+import { startOAuth, handleOAuthCallback, isConnected, disconnect, getAccessToken } from './auth.js';
+import { setupDriveFolders, loadConfig, saveConfig, getSheetUrl } from './drive.js';
+import { readFoodChart, exportLogToSheet } from './sheets.js';
+import { fetchBG as nsBG, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
   showToast, applyTheme, applyColorTheme, applyMode, initTheme,
@@ -35,7 +36,7 @@ let state = {
 
 MEAL_SLUGS.forEach(slug => {
   state.meals[slug] = {
-    foods: [], currentBG: '', iob: '', cob: '',
+    foods: [], currentBG: '', cob: '',
     postBgReadings: [], notes: '', bgTimestamp: null, bgTrend: null,
     lastSyncAt: null,
     entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '', absorptionRate: 3.0 }
@@ -129,7 +130,6 @@ function inferBGSource() {
   const ns  = storage.get('ns_config');    if (ns?.url)   return 'nightscout';
   return 'manual';
 }
-function inferIOBSource() { const ns = storage.get('ns_config'); return ns?.url ? 'nightscout' : 'manual'; }
 function inferCOBSource() { const ns = storage.get('ns_config'); return ns?.url ? 'nightscout' : 'manual'; }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -243,7 +243,6 @@ function renderMealTabs() {
 function renderBGPanel() {
   const meal = getCurrentMeal();
   setVal('bg-value', meal.currentBG);
-  setVal('iob-value', meal.iob);
   setVal('cob-value', meal.cob);
   const unitLabel = state.units === 'mmol' ? 'mmol/L' : 'mg/dL';
   document.querySelectorAll('.bg-unit-label').forEach(el => { el.textContent = unitLabel; });
@@ -253,7 +252,6 @@ function renderBGPanel() {
     else bgTs.hidden = true;
   }
   const fetchBgBtn  = document.getElementById('fetch-bg-btn');  if (fetchBgBtn)  fetchBgBtn.hidden  = inferBGSource()  === 'manual';
-  const fetchIobBtn = document.getElementById('fetch-iob-btn'); if (fetchIobBtn) fetchIobBtn.hidden = inferIOBSource() === 'manual';
   const fetchCobBtn = document.getElementById('fetch-cob-btn'); if (fetchCobBtn) fetchCobBtn.hidden = inferCOBSource() === 'manual';
 }
 
@@ -594,11 +592,10 @@ function updateBolusLive() { renderBolusPanel(); persistDraftState(); }
 function renderBolusPanel() {
   const meal = getCurrentMeal(); const settings = getCurrentMealSettings();
   const foods = meal.foods.map(f => ({ weightG: parseFloat(f.weightG) || 0, carbFactor: f.carbFactor || 0 }));
-  const result = calcBolus({ foods, currentBG: parseFloat(meal.currentBG) || null, targetBG: settings.target_bg, icr: settings.icr, isf: settings.isf, iob: parseFloat(meal.iob) || 0 });
+  const result = calcBolus({ foods, currentBG: parseFloat(meal.currentBG) || null, targetBG: settings.target_bg, icr: settings.icr, isf: settings.isf, iob: 0 });
   setText('summary-carbs',      result.totalNetCarbs.toFixed(1) + ' g');
   setText('summary-meal-bolus', result.mealBolus.toFixed(2) + ' U');
   setText('summary-correction', result.correctionBolus.toFixed(2) + ' U');
-  setText('summary-iob',        '−' + result.iobOffset.toFixed(2) + ' U');
   setText('summary-total',      result.totalBolus.toFixed(2));
 }
 
@@ -695,10 +692,8 @@ function setupNavigation() {
   });
 
   document.getElementById('bg-value')?.addEventListener('input',  e => { getCurrentMeal().currentBG = e.target.value; updateBolusLive(); });
-  document.getElementById('iob-value')?.addEventListener('input', e => { getCurrentMeal().iob = e.target.value; updateBolusLive(); });
-  document.getElementById('cob-value')?.addEventListener('input', e => { getCurrentMeal().cob = e.target.value; persistDraftState(); });
+  document.getElementById('cob-value')?.addEventListener('input', e => { getCurrentMeal().cob = e.target.value; });
   document.getElementById('fetch-bg-btn')?.addEventListener('click',       fetchBG);
-  document.getElementById('fetch-iob-btn')?.addEventListener('click',      fetchIOB);
   document.getElementById('fetch-cob-btn')?.addEventListener('click',      fetchCOB);
   document.getElementById('fetch-profile-btn')?.addEventListener('click',  fetchNightscoutProfile);
 
@@ -1419,11 +1414,6 @@ async function fetchBG() {
   } catch (err) { showToast('BG fetch failed: ' + err.message, 'error'); } finally { if (btn) hideSpinner(btn); }
 }
 
-async function fetchIOB() {
-  const btn = document.getElementById('fetch-iob-btn'); if (btn) showSpinner(btn);
-  try { const result = await nsIOB(); getCurrentMeal().iob = result.value; setVal('iob-value', result.value); updateBolusLive(); showToast(`IOB: ${result.value} U`, 'success'); }
-  catch (err) { showToast('IOB fetch failed: ' + err.message, 'error'); } finally { if (btn) hideSpinner(btn); }
-}
 
 async function fetchCOB() {
   const btn = document.getElementById('fetch-cob-btn'); if (btn) showSpinner(btn);
