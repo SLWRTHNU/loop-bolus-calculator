@@ -23,17 +23,9 @@ async function nsGet(path) {
 }
 
 const TREND_ARROWS = {
-  TripleUp: '⤊',
-  DoubleUp: '⇈',
-  SingleUp: '↑',
-  FortyFiveUp: '↗',
-  Flat: '→',
-  FortyFiveDown: '↘',
-  SingleDown: '↓',
-  DoubleDown: '⇊',
-  TripleDown: '⤋',
-  NotComputable: '-',
-  RateOutOfRange: '⇕'
+  TripleUp: '⤊', DoubleUp: '⇈', SingleUp: '↑', FortyFiveUp: '↗',
+  Flat: '→', FortyFiveDown: '↘', SingleDown: '↓', DoubleDown: '⇊',
+  TripleDown: '⤋', NotComputable: '-', RateOutOfRange: '⇕'
 };
 
 export async function fetchBG(units) {
