@@ -1,6 +1,7 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState } from './backend.js';
 import { startOAuth, handleOAuthCallback, isConnected, disconnect, getAccessToken } from './auth.js';
 import { setupDriveFolders, loadConfig, saveConfig, getSheetUrl } from './drive.js';
 import { readFoodChart, exportLogToSheet } from './sheets.js';
