@@ -577,11 +577,11 @@ function performFoodSearch(query, inputEl, onSelect) {
     personal = state.personalFoods.slice(0, 5).map(f => ({ name: f.name, carbFactor: f.cf, absorptionRate: f.abs, source: 'personal' }));
     builtin  = HEALTH_CANADA_FOODS.slice(0, Math.max(0, 5 - personal.length));
   } else {
-    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5)
+    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q))
       .map(f => ({ name: f.name, carbFactor: f.cf, absorptionRate: f.abs, source: 'personal' }));
-    builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
+    builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q));
   }
-  const results = [...personal, ...builtin].slice(0, 8);
+  const results = q ? [...personal, ...builtin] : [...personal, ...builtin].slice(0, 8);
   if (!results.length) return;
   const dropdown = createFoodDropdown(results, onSelect);
   if (dropdown) positionDropdown(dropdown, inputEl);
@@ -930,7 +930,7 @@ function addFoodCheckName() {
   else       { statusDiv.textContent = ''; statusDiv.className = 'field-status'; }
 
   if (partials.length) {
-    matchesDiv.innerHTML = partials.slice(0, 8).map(p =>
+    matchesDiv.innerHTML = partials.map(p =>
       `<div class="match-item" data-name="${escHtml(p.name)}" data-cf="${p.cf}" data-abs="${p.abs}">${escHtml(p.name)}</div>`
     ).join('');
     matchesDiv.hidden = false;
