@@ -1283,7 +1283,7 @@ function setupRecipePanel() {
   document.getElementById('recipe-add-ingredient-btn')?.addEventListener('click', () => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
     const ef = recipe.entryFood;
-    if (!ef.name || !ef.carbFactor) { showToast('Select a food first', 'error'); return; }
+    if (!ef.name || ef.carbFactor == null) { showToast('Select a food first', 'error'); return; }
     const w = parseFloat(ef.weightG)||0, c = parseFloat(ef.carbsG)||0;
     if (!w && !c) { showToast('Enter weight or carbs', 'error'); return; }
     recipe.ingredients.push({ name: ef.name, carbFactor: ef.carbFactor, weightG: w || calcWeightFromCarbs(c, ef.carbFactor), absorptionRate: ef.absorptionRate||3.0 });
@@ -1331,7 +1331,7 @@ function setupRecipeEntryRow() {
     performFoodSearch(query, el, food => {
       const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
       recipe.entryFood.name = food.name; recipe.entryFood.carbFactor = food.carbFactor; recipe.entryFood.absorptionRate = food.absorptionRate;
-      if (searchInput) searchInput.value = food.name; if (cfInput) cfInput.value = food.carbFactor||'';
+      if (searchInput) searchInput.value = food.name; if (cfInput) cfInput.value = food.carbFactor != null ? food.carbFactor : '';
       if (recipe.entryFood.weightG) { const c = calcNetCarbs(parseFloat(recipe.entryFood.weightG), food.carbFactor); recipe.entryFood.carbsG = c; if (carbsInput) carbsInput.value = c; }
     });
   }, 300);
