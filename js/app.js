@@ -596,6 +596,7 @@ function renderBolusPanel() {
   const foods = meal.foods.map(f => ({ weightG: parseFloat(f.weightG) || 0, carbFactor: f.carbFactor || 0 }));
   const result = calcBolus({ foods, currentBG: parseFloat(meal.currentBG) || null, targetBG: settings.target_bg, icr: settings.icr, isf: settings.isf, iob: parseFloat(meal.iob) || 0 });
   setText('summary-carbs',      result.totalNetCarbs.toFixed(1) + ' g');
+  setText('summary-carbs-hero', result.totalNetCarbs.toFixed(1));
   setText('summary-meal-bolus', result.mealBolus.toFixed(2) + ' U');
   setText('summary-correction', result.correctionBolus.toFixed(2) + ' U');
   setText('summary-iob',        '−' + result.iobOffset.toFixed(2) + ' U');
@@ -1019,7 +1020,8 @@ function buildMealExportPayload(slug) {
       carbFactor: f.carbFactor,
       absorptionRate: f.absorptionRate,
       weightGiven: f.weightG,
-      netCarbs: calcNetCarbs(parseFloat(f.weightG) || 0, f.carbFactor || 0)
+      netCarbs: calcNetCarbs(parseFloat(f.weightG) || 0, f.carbFactor || 0),
+      recipeIngredients: f.recipeIngredients || null
     })),
     carbRatio: settings.icr,
     target: settings.target_bg,
@@ -1312,7 +1314,17 @@ function setupRecipePanel() {
     const c  = parseFloat(document.getElementById('recipe-portion-carbs')?.value)||0;
     if (!w && !c) { showToast('Enter portion weight or carbs', 'error'); return; }
     const weight = w || (cf ? Math.round((c/cf)*10)/10 : 0);
-    getCurrentMeal().foods.push({ name: recipe.name||'Recipe', carbFactor: cf, weightG: weight, absorptionRate: 3.0 });
+    getCurrentMeal().foods.push({
+      name: recipe.name||'Recipe',
+      carbFactor: cf,
+      weightG: weight,
+      absorptionRate: 3.0,
+      recipeIngredients: recipe.ingredients.map(ing => ({
+        name: ing.name,
+        carbFactor: ing.carbFactor,
+        weightG: ing.weightG
+      }))
+    });
     renderFoodTable(); updateBolusLive(); showToast('Recipe added to meal', 'success');
   });
   document.getElementById('recipe-name-input')?.addEventListener('input', e => {

@@ -656,6 +656,53 @@ select { cursor: pointer; }
   margin-left: 4px;
 }
 
+.dual-stat-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0 12px;
+}
+
+.dual-stat {
+  text-align: center;
+  flex: 1;
+}
+
+.dual-stat__label {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.dual-stat__value {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.dual-stat__value--accent {
+  color: var(--accent);
+}
+
+.dual-stat__unit {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-2);
+  margin-left: 3px;
+}
+
+.dual-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
 .bolus-breakdown {
   border-top: 1px solid var(--border);
   padding-top: 12px;
@@ -1098,6 +1145,8 @@ select { cursor: pointer; }
   .bolus-summary-card { grid-column: auto !important; grid-row: auto !important; }
   .timing-card        { grid-column: auto !important; grid-row: auto !important; }
   .timing-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .dual-stat__value { font-size: 2.1rem; }
+  .dual-stat-display { gap: 10px; }
   .recipe-panel {
     position: fixed; top: 56px; right: 0; height: calc(100dvh - 56px);
     z-index: 300; box-shadow: var(--shadow);
