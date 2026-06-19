@@ -152,6 +152,10 @@ function timeInputToDate(timeStr) {
 }
 
 function hhmm(date) {
+  return date.toTimeString().slice(0, 5); // HH:MM for time inputs
+}
+
+function hhmmDisplay(date) {
   return date.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
@@ -1027,8 +1031,8 @@ function buildMealExportPayload(slug) {
     mealBolus: bolus.mealBolus,
     correctionBolus: bolus.correctionBolus,
     totalBolus: bolus.totalBolus,
-    bolusTime: bolusTimeAt ? hhmm(bolusTimeAt) : '',
-    eatTime: eatTimeAt ? hhmm(eatTimeAt) : '',
+    bolusTime: bolusTimeAt ? hhmmDisplay(bolusTimeAt) : '',
+    eatTime: eatTimeAt ? hhmmDisplay(eatTimeAt) : '',
     postMealReadings: (meal.postBgReadings || [])
       .filter(r => r.time || r.bg)
       .map(r => ({
@@ -1214,7 +1218,7 @@ function setupPostMealTracker() {
     const interval = parseInt(document.getElementById('tracking-interval')?.value || '30');
     if (!locked) { showToast('Lock the bolus time first', 'error'); return; }
     const rows = getCurrentMeal().postBgReadings;
-    rows.forEach((r, i) => { const t = new Date(locked.getTime() + (i+1) * interval * 60000); r.time = hhmm(t); r.minSinceBolus = (i+1) * interval; });
+    rows.forEach((r, i) => { const t = new Date(locked.getTime() + (i+1) * interval * 60000); r.time = hhmmDisplay(t); r.minSinceBolus = (i+1) * interval; });
     renderPostMealTracker();
     persistDraftState();
   });
@@ -1279,7 +1283,7 @@ function setupRecipePanel() {
   document.getElementById('recipe-add-ingredient-btn')?.addEventListener('click', () => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
     const ef = recipe.entryFood;
-    if (!ef.name || !ef.carbFactor) { showToast('Select a food first', 'error'); return; }
+    if (!ef.name || ef.carbFactor == null) { showToast('Select a food first', 'error'); return; }
     const w = parseFloat(ef.weightG)||0, c = parseFloat(ef.carbsG)||0;
     if (!w && !c) { showToast('Enter weight or carbs', 'error'); return; }
     recipe.ingredients.push({ name: ef.name, carbFactor: ef.carbFactor, weightG: w || calcWeightFromCarbs(c, ef.carbFactor), absorptionRate: ef.absorptionRate||3.0 });
@@ -1327,7 +1331,7 @@ function setupRecipeEntryRow() {
     performFoodSearch(query, el, food => {
       const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
       recipe.entryFood.name = food.name; recipe.entryFood.carbFactor = food.carbFactor; recipe.entryFood.absorptionRate = food.absorptionRate;
-      if (searchInput) searchInput.value = food.name; if (cfInput) cfInput.value = food.carbFactor||'';
+      if (searchInput) searchInput.value = food.name; if (cfInput) cfInput.value = food.carbFactor != null ? food.carbFactor : '';
       if (recipe.entryFood.weightG) { const c = calcNetCarbs(parseFloat(recipe.entryFood.weightG), food.carbFactor); recipe.entryFood.carbsG = c; if (carbsInput) carbsInput.value = c; }
     });
   }, 300);
@@ -1563,7 +1567,7 @@ function recordAutoPostMealReading(slug, lockedAt, bg, now) {
     : '';
 
   meal.postBgReadings.push({
-    time: hhmm(now),
+    time: hhmmDisplay(now),
     minSinceBolus: roundedMin,
     bg: bg.value,
     trend: bg.trend || '',
