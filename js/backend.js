@@ -62,6 +62,6 @@ export async function getDraftState() {
   return r.success ? r.draft : null;
 }
 
-export async function setDraftState(data) {
-  return backendPost('setDraftState', { data });
+export async function setDraftState(slug, mealData) {
+  return backendPost('setDraftState', { slug, mealData });
 }

@@ -179,6 +179,18 @@ function serializeMealsForDraft() {
   return out;
 }
 
+function serializeMealForDraft(slug) {
+  const meal = state.meals[slug];
+  return {
+    foods: meal.foods, currentBG: meal.currentBG, cob: meal.cob, notes: meal.notes,
+    postBgReadings: meal.postBgReadings,
+    bgTimestamp: meal.bgTimestamp ? meal.bgTimestamp.toISOString() : null,
+    bgTrend: meal.bgTrend,
+    bolusLockedAt: state.bolusLockedAt[slug] ? state.bolusLockedAt[slug].toISOString() : null,
+    mealLockedAt: state.mealLockedAt[slug] ? state.mealLockedAt[slug].toISOString() : null
+  };
+}
+
 function applyDraftToState(draftData) {
   if (!draftData) return;
   MEAL_SLUGS.forEach(slug => {
@@ -1147,7 +1159,7 @@ function clearMeal(slug) {
   state.mealLockedAt[slug] = null;
   renderAll();
   updateBolusLive();
-  persistDraftState();
+  persistDraftState(slug);
 }
 
 function clearCurrentMeal() {
@@ -1507,14 +1519,17 @@ const _debouncedSetConfig = debounce(async (config) => {
   try { await setConfig(config); } catch {}
 }, 1000);
 
-const _debouncedSetDraftState = debounce(async (data) => {
-  try { await setDraftState(data); } catch (err) { console.error('setDraftState failed:', err); }
-}, 1000);
-
-function persistDraftState() {
-  if (!state.connected) { console.log('persistDraftState: not connected, skipping'); return; }
-  console.log('persistDraftState: calling debounced save');
-  _debouncedSetDraftState(serializeMealsForDraft());
+const _debouncedDraftSavers = {};
+function persistDraftState(slug) {
+  if (!state.connected) return;
+  if (!slug) slug = state.activeMeal;
+  if (!_debouncedDraftSavers[slug]) {
+    _debouncedDraftSavers[slug] = debounce(async (s) => {
+      try { await setDraftState(s, serializeMealForDraft(s)); }
+      catch (err) { console.error('setDraftState failed for', s, err); }
+    }, 1000);
+  }
+  _debouncedDraftSavers[slug](slug);
 }
 
 // ─── NIGHTSCOUT POLLING ──────────────────────────────────────────────────────
@@ -1595,7 +1610,7 @@ function recordAutoPostMealReading(slug, lockedAt, bg, now) {
     trend: bg.trend || '',
     delta
   });
-  persistDraftState();
+  persistDraftState(slug);
 
   if (slug === state.activeMeal) renderPostMealTracker();
 }
