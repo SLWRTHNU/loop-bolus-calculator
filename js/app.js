@@ -675,6 +675,10 @@ function renderSettingsSection() {
   const modeSelect  = document.getElementById('mode-select');  if (modeSelect)  modeSelect.value  = storage.get('mode','system');
   const clearTimeInput = document.getElementById('clear-time-input');
   if (clearTimeInput) clearTimeInput.value = state.config?.clear_time || '04:00';
+  const nightlyEnabledInput = document.getElementById('nightly-export-enabled');
+  if (nightlyEnabledInput) nightlyEnabledInput.checked = state.config?.nightly_export_enabled !== false;
+  const nightlyTimeInput = document.getElementById('nightly-export-time');
+  if (nightlyTimeInput) nightlyTimeInput.value = state.config?.nightly_export_time || '03:00';
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -734,6 +738,12 @@ function setupNavigation() {
   document.getElementById('color-theme-select')?.addEventListener('change', e => { applyColorTheme(e.target.value); persistConfig({ color_theme: e.target.value }); });
   document.getElementById('mode-select')?.addEventListener('change',  e => { applyMode(e.target.value);  persistConfig({ mode: e.target.value }); });
   document.getElementById('clear-time-input')?.addEventListener('change', e => { persistConfig({ clear_time: e.target.value }); });
+  document.getElementById('nightly-export-enabled')?.addEventListener('change', e => {
+    persistConfig({ nightly_export_enabled: e.target.checked });
+  });
+  document.getElementById('nightly-export-time')?.addEventListener('change', e => {
+    persistConfig({ nightly_export_time: e.target.value });
+  });
 }
 
 // ─── TOOLS MENU ──────────────────────────────────────────────────────────────

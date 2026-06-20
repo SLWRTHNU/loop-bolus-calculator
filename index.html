@@ -445,6 +445,22 @@
           <hr class="divider" />
 
           <div class="settings-section">
+  <h2>Nightly Export</h2>
+  <label class="checkbox-row">
+    <input type="checkbox" id="nightly-export-enabled" checked />
+    <span>Automatically export and clear meals overnight</span>
+  </label>
+  <div class="field" style="margin-top:10px">
+    <label for="nightly-export-time">Export time</label>
+    <input type="time" class="input" id="nightly-export-time" value="03:00" />
+    <p class="inline-note">Recommend setting this at least 6 hours after your last
+      typical meal or snack, to allow the 5-hour post-meal tracking window to
+      complete. Only meals with a bolus given are exported.</p>
+  </div>
+</div>
+<hr class="divider" />
+
+          <div class="settings-section">
             <h2>Display</h2>
             <div class="field">
               <label for="units-select">Blood glucose units</label>
