@@ -2,7 +2,6 @@ import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, get
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
 import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState } from './backend.js';
-import { estimateAbsorption } from './absorption.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
@@ -91,6 +90,14 @@ async function postBackendSetup() {
     if (draft && draft.data && Object.keys(draft.data).length > 0) {
       applyDraftToState(draft.data);
     }
+    if (draft && draft.data && draft.data.recipes && draft.data.recipes.length) {
+      state.recipes = draft.data.recipes.map(r => ({
+        name: r.name || '',
+        ingredients: r.ingredients || [],
+        entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '' }
+      }));
+      state.activeRecipeIndex = 0;
+    }
 
     renderAll();
     renderSettingsSection();
@@ -177,6 +184,18 @@ function serializeMealsForDraft() {
     };
   });
   return out;
+}
+
+function serializeMealForDraft(slug) {
+  const meal = state.meals[slug];
+  return {
+    foods: meal.foods, currentBG: meal.currentBG, cob: meal.cob, notes: meal.notes,
+    postBgReadings: meal.postBgReadings,
+    bgTimestamp: meal.bgTimestamp ? meal.bgTimestamp.toISOString() : null,
+    bgTrend: meal.bgTrend,
+    bolusLockedAt: state.bolusLockedAt[slug] ? state.bolusLockedAt[slug].toISOString() : null,
+    mealLockedAt: state.mealLockedAt[slug] ? state.mealLockedAt[slug].toISOString() : null
+  };
 }
 
 function applyDraftToState(draftData) {
@@ -577,11 +596,11 @@ function performFoodSearch(query, inputEl, onSelect) {
     personal = state.personalFoods.slice(0, 5).map(f => ({ name: f.name, carbFactor: f.cf, absorptionRate: f.abs, source: 'personal' }));
     builtin  = HEALTH_CANADA_FOODS.slice(0, Math.max(0, 5 - personal.length));
   } else {
-    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5)
+    personal = state.personalFoods.filter(f => f.name.toLowerCase().includes(q))
       .map(f => ({ name: f.name, carbFactor: f.cf, absorptionRate: f.abs, source: 'personal' }));
-    builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q)).slice(0, 5);
+    builtin  = HEALTH_CANADA_FOODS.filter(f => f.name.toLowerCase().includes(q));
   }
-  const results = [...personal, ...builtin].slice(0, 8);
+  const results = q ? [...personal, ...builtin] : [...personal, ...builtin].slice(0, 8);
   if (!results.length) return;
   const dropdown = createFoodDropdown(results, onSelect);
   if (dropdown) positionDropdown(dropdown, inputEl);
@@ -596,6 +615,7 @@ function renderBolusPanel() {
   const foods = meal.foods.map(f => ({ weightG: parseFloat(f.weightG) || 0, carbFactor: f.carbFactor || 0 }));
   const result = calcBolus({ foods, currentBG: parseFloat(meal.currentBG) || null, targetBG: settings.target_bg, icr: settings.icr, isf: settings.isf, iob: parseFloat(meal.iob) || 0 });
   setText('summary-carbs',      result.totalNetCarbs.toFixed(1) + ' g');
+  setText('summary-carbs-hero', result.totalNetCarbs.toFixed(1));
   setText('summary-meal-bolus', result.mealBolus.toFixed(2) + ' U');
   setText('summary-correction', result.correctionBolus.toFixed(2) + ' U');
   setText('summary-iob',        '−' + result.iobOffset.toFixed(2) + ' U');
@@ -674,6 +694,10 @@ function renderSettingsSection() {
   const modeSelect  = document.getElementById('mode-select');  if (modeSelect)  modeSelect.value  = storage.get('mode','system');
   const clearTimeInput = document.getElementById('clear-time-input');
   if (clearTimeInput) clearTimeInput.value = state.config?.clear_time || '04:00';
+  const nightlyEnabledInput = document.getElementById('nightly-export-enabled');
+  if (nightlyEnabledInput) nightlyEnabledInput.checked = state.config?.nightly_export_enabled !== false;
+  const nightlyTimeInput = document.getElementById('nightly-export-time');
+  if (nightlyTimeInput) nightlyTimeInput.value = state.config?.nightly_export_time || '03:00';
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -733,6 +757,12 @@ function setupNavigation() {
   document.getElementById('color-theme-select')?.addEventListener('change', e => { applyColorTheme(e.target.value); persistConfig({ color_theme: e.target.value }); });
   document.getElementById('mode-select')?.addEventListener('change',  e => { applyMode(e.target.value);  persistConfig({ mode: e.target.value }); });
   document.getElementById('clear-time-input')?.addEventListener('change', e => { persistConfig({ clear_time: e.target.value }); });
+  document.getElementById('nightly-export-enabled')?.addEventListener('change', e => {
+    persistConfig({ nightly_export_enabled: e.target.checked });
+  });
+  document.getElementById('nightly-export-time')?.addEventListener('change', e => {
+    persistConfig({ nightly_export_time: e.target.value });
+  });
 }
 
 // ─── TOOLS MENU ──────────────────────────────────────────────────────────────
@@ -850,15 +880,6 @@ function setupAddFoodPanel() {
   document.getElementById('add-food-portion')?.addEventListener('input', addFoodCalcFactor);
   document.getElementById('add-food-total-carbs')?.addEventListener('input', addFoodCalcFactor);
   document.getElementById('add-food-fiber')?.addEventListener('input', addFoodCalcFactor);
-  document.getElementById('add-food-fat')?.addEventListener('input', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-protein')?.addEventListener('input', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-method')?.addEventListener('change', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-texture')?.addEventListener('change', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-mixed')?.addEventListener('change', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-absorption')?.addEventListener('input', e => {
-    const val = parseFloat(e.target.value);
-    if (!isNaN(val)) addFoodUpdateAbsorptionUI(val);
-  });
   document.getElementById('add-food-name')?.addEventListener('input', addFoodCheckName);
   document.getElementById('add-food-submit-btn')?.addEventListener('click', addFoodSubmit);
 
@@ -877,41 +898,7 @@ function addFoodCalcFactor() {
   const net = Math.max(0, carbs - fiber);
   const raw = portion > 0 ? (net / portion) : 0;
   setVal('add-food-cf', (Math.floor(raw * 100) / 100).toFixed(2));
-  addFoodRecalcAbsorption(net);
   addFoodValidate();
-}
-
-function addFoodRecalcAbsorption(netOverride) {
-  const carbs = parseFloat(document.getElementById('add-food-total-carbs')?.value) || 0;
-  const fiber = parseFloat(document.getElementById('add-food-fiber')?.value) || 0;
-  const net = typeof netOverride === 'number' ? netOverride : Math.max(0, carbs - fiber);
-
-  const hours = estimateAbsorption({
-    netCarbs: net,
-    fat: parseFloat(document.getElementById('add-food-fat')?.value) || 0,
-    protein: parseFloat(document.getElementById('add-food-protein')?.value) || 0,
-    method: document.getElementById('add-food-method')?.value || '',
-    texture: document.getElementById('add-food-texture')?.value || '',
-    mixedMeal: document.getElementById('add-food-mixed')?.checked || false
-  });
-  setVal('add-food-absorption', hours);
-  addFoodUpdateAbsorptionUI(hours);
-}
-
-function addFoodUpdateAbsorptionUI(hours) {
-  hours = parseFloat(hours);
-  setText('add-food-abs-hours', hours.toFixed(1));
-  let cat, sub, color;
-  if      (hours <= 2) { cat = 'Fast';      sub = 'high GI';            color = 'var(--error)'; }
-  else if (hours <= 3) { cat = 'Medium';    sub = 'moderate GI';        color = 'var(--warning)'; }
-  else if (hours <= 5) { cat = 'Slow';      sub = 'low GI / fat';       color = 'var(--success)'; }
-  else                 { cat = 'Very Slow'; sub = 'high fat / protein'; color = 'var(--accent)'; }
-  const catEl = document.getElementById('add-food-abs-category');
-  if (catEl) { catEl.textContent = cat; catEl.style.color = color; }
-  setText('add-food-abs-gi', sub);
-  const pct = Math.min(95, Math.max(5, ((hours - 2) / 4) * 90 + 5));
-  const fill = document.getElementById('add-food-speed-fill');
-  if (fill) { fill.style.width = pct + '%'; fill.style.background = color; }
 }
 
 function addFoodCheckName() {
@@ -929,7 +916,7 @@ function addFoodCheckName() {
   else       { statusDiv.textContent = ''; statusDiv.className = 'field-status'; }
 
   if (partials.length) {
-    matchesDiv.innerHTML = partials.slice(0, 8).map(p =>
+    matchesDiv.innerHTML = partials.map(p =>
       `<div class="match-item" data-name="${escHtml(p.name)}" data-cf="${p.cf}" data-abs="${p.abs}">${escHtml(p.name)}</div>`
     ).join('');
     matchesDiv.hidden = false;
@@ -937,8 +924,6 @@ function addFoodCheckName() {
       item.addEventListener('click', () => {
         document.getElementById('add-food-name').value = item.dataset.name;
         setVal('add-food-cf', (Math.floor(parseFloat(item.dataset.cf) * 100) / 100).toFixed(2));
-        setVal('add-food-absorption', item.dataset.abs);
-        addFoodUpdateAbsorptionUI(parseFloat(item.dataset.abs));
         matchesDiv.hidden = true;
         addFoodCheckName();
       });
@@ -960,7 +945,7 @@ function addFoodValidate() {
 async function addFoodSubmit() {
   const name = document.getElementById('add-food-name')?.value.trim();
   const cf   = parseFloat(document.getElementById('add-food-cf')?.value) || 0;
-  const abs  = parseFloat(document.getElementById('add-food-absorption')?.value) || 3.0;
+  const abs  = 3.0;
   const btn = document.getElementById('add-food-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
   try {
@@ -978,14 +963,10 @@ async function addFoodSubmit() {
 }
 
 function addFoodClearFields() {
-  ['add-food-name','add-food-portion','add-food-total-carbs','add-food-fiber','add-food-fat','add-food-protein']
+  ['add-food-name','add-food-portion','add-food-total-carbs','add-food-fiber']
     .forEach(id => setVal(id, ''));
   setVal('add-food-cf', '0.00');
-  setVal('add-food-absorption', '3.0');
-  setVal('add-food-method', ''); setVal('add-food-texture', '');
-  const mixed = document.getElementById('add-food-mixed'); if (mixed) mixed.checked = false;
   const status = document.getElementById('add-food-name-status'); if (status) { status.textContent = ''; status.className = 'field-status'; }
-  addFoodUpdateAbsorptionUI(3.0);
   addFoodValidate();
 }
 
@@ -1019,7 +1000,8 @@ function buildMealExportPayload(slug) {
       carbFactor: f.carbFactor,
       absorptionRate: f.absorptionRate,
       weightGiven: f.weightG,
-      netCarbs: calcNetCarbs(parseFloat(f.weightG) || 0, f.carbFactor || 0)
+      netCarbs: calcNetCarbs(parseFloat(f.weightG) || 0, f.carbFactor || 0),
+      recipeIngredients: f.recipeIngredients || null
     })),
     carbRatio: settings.icr,
     target: settings.target_bg,
@@ -1135,7 +1117,7 @@ function clearMeal(slug) {
   state.mealLockedAt[slug] = null;
   renderAll();
   updateBolusLive();
-  persistDraftState();
+  persistDraftState(slug);
 }
 
 function clearCurrentMeal() {
@@ -1279,17 +1261,19 @@ function setupRecipePanel() {
   document.getElementById('new-recipe-btn')?.addEventListener('click', () => {
     state.recipes.push(createRecipe()); state.activeRecipeIndex = state.recipes.length - 1;
     renderRecipeTabs(); renderRecipePanel();
+    persistRecipeDraft();
   });
   document.getElementById('recipe-add-ingredient-btn')?.addEventListener('click', () => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
     const ef = recipe.entryFood;
-    if (!ef.name || !ef.carbFactor) { showToast('Select a food first', 'error'); return; }
+    if (!ef.name || ef.carbFactor == null) { showToast('Select a food first', 'error'); return; }
     const w = parseFloat(ef.weightG)||0, c = parseFloat(ef.carbsG)||0;
     if (!w && !c) { showToast('Enter weight or carbs', 'error'); return; }
     recipe.ingredients.push({ name: ef.name, carbFactor: ef.carbFactor, weightG: w || calcWeightFromCarbs(c, ef.carbFactor), absorptionRate: ef.absorptionRate||3.0 });
     recipe.entryFood = { name:'', carbFactor:null, weightG:'', carbsG:'' };
     ['recipe-search-input','recipe-entry-cf','recipe-entry-weight','recipe-entry-carbs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     renderRecipeIngredients(); renderRecipeComposite();
+    persistRecipeDraft();
   });
   setupRecipeEntryRow();
 
@@ -1312,13 +1296,24 @@ function setupRecipePanel() {
     const c  = parseFloat(document.getElementById('recipe-portion-carbs')?.value)||0;
     if (!w && !c) { showToast('Enter portion weight or carbs', 'error'); return; }
     const weight = w || (cf ? Math.round((c/cf)*10)/10 : 0);
-    getCurrentMeal().foods.push({ name: recipe.name||'Recipe', carbFactor: cf, weightG: weight, absorptionRate: 3.0 });
+    getCurrentMeal().foods.push({
+      name: recipe.name||'Recipe',
+      carbFactor: cf,
+      weightG: weight,
+      absorptionRate: 3.0,
+      recipeIngredients: recipe.ingredients.map(ing => ({
+        name: ing.name,
+        carbFactor: ing.carbFactor,
+        weightG: ing.weightG
+      }))
+    });
     renderFoodTable(); updateBolusLive(); showToast('Recipe added to meal', 'success');
   });
   document.getElementById('recipe-name-input')?.addEventListener('input', e => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (recipe) recipe.name = e.target.value;
     const tabs = document.querySelectorAll('.recipe-tab-pill');
     if (tabs[state.activeRecipeIndex]) tabs[state.activeRecipeIndex].textContent = e.target.value || `Recipe ${state.activeRecipeIndex+1}`;
+    persistRecipeDraft();
   });
 }
 
@@ -1331,7 +1326,7 @@ function setupRecipeEntryRow() {
     performFoodSearch(query, el, food => {
       const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
       recipe.entryFood.name = food.name; recipe.entryFood.carbFactor = food.carbFactor; recipe.entryFood.absorptionRate = food.absorptionRate;
-      if (searchInput) searchInput.value = food.name; if (cfInput) cfInput.value = food.carbFactor||'';
+      if (searchInput) searchInput.value = food.name; if (cfInput) cfInput.value = food.carbFactor != null ? food.carbFactor : '';
       if (recipe.entryFood.weightG) { const c = calcNetCarbs(parseFloat(recipe.entryFood.weightG), food.carbFactor); recipe.entryFood.carbsG = c; if (carbsInput) carbsInput.value = c; }
     });
   }, 300);
@@ -1380,13 +1375,36 @@ function renderRecipeIngredients() {
   const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
   tbody.innerHTML = '';
   recipe.ingredients.forEach((ing, i) => {
-    const carbs = calcNetCarbs(parseFloat(ing.weightG)||0, ing.carbFactor||0);
+    const carbsVal = calcNetCarbs(parseFloat(ing.weightG) || 0, ing.carbFactor || 0);
     const row = document.createElement('tr');
     row.innerHTML = `<td>${escHtml(ing.name)}</td><td>${ing.carbFactor!=null?ing.carbFactor:'—'}</td>
-      <td><input type="number" class="input input--sm" value="${ing.weightG||''}" min="0" step="1" /></td>
-      <td>${carbs.toFixed(1)}</td><td><button class="btn btn--icon">×</button></td>`;
-    row.querySelector('input').addEventListener('input', e => { recipe.ingredients[i].weightG = parseFloat(e.target.value)||0; renderRecipeIngredients(); renderRecipeComposite(); });
-    row.querySelector('button').addEventListener('click', () => { recipe.ingredients.splice(i, 1); renderRecipeIngredients(); renderRecipeComposite(); });
+      <td><input type="number" class="input input--sm ing-weight" value="${ing.weightG||''}" min="0" step="1" /></td>
+      <td><input type="number" class="input input--sm ing-carbs" value="${carbsVal||''}" min="0" step="0.1" /></td>
+      <td><button class="btn btn--icon">×</button></td>`;
+
+    const weightInput = row.querySelector('.ing-weight');
+    const carbsInput  = row.querySelector('.ing-carbs');
+
+    weightInput.addEventListener('input', e => {
+      const w = parseFloat(e.target.value) || 0;
+      recipe.ingredients[i].weightG = w;
+      if (ing.carbFactor) carbsInput.value = calcNetCarbs(w, ing.carbFactor);
+      renderRecipeComposite();
+    });
+    carbsInput.addEventListener('input', e => {
+      const c = parseFloat(e.target.value) || 0;
+      if (ing.carbFactor) {
+        const w = calcWeightFromCarbs(c, ing.carbFactor);
+        recipe.ingredients[i].weightG = w;
+        weightInput.value = w;
+      }
+      renderRecipeComposite();
+    });
+    row.querySelector('button').addEventListener('click', () => {
+      recipe.ingredients.splice(i, 1); renderRecipeIngredients(); renderRecipeComposite();
+      persistRecipeDraft();
+    });
+
     tbody.appendChild(row);
   });
 }
@@ -1485,14 +1503,40 @@ const _debouncedSetConfig = debounce(async (config) => {
   try { await setConfig(config); } catch {}
 }, 1000);
 
-const _debouncedSetDraftState = debounce(async (data) => {
-  try { await setDraftState(data); } catch (err) { console.error('setDraftState failed:', err); }
+const _debouncedDraftSavers = {};
+function persistDraftState(slug) {
+  if (!state.connected) return;
+  if (!slug) slug = state.activeMeal;
+  if (!_debouncedDraftSavers[slug]) {
+    _debouncedDraftSavers[slug] = debounce(async (s) => {
+      try { await setDraftState(s, serializeMealForDraft(s)); }
+      catch (err) { console.error('setDraftState failed for', s, err); }
+    }, 1000);
+  }
+  _debouncedDraftSavers[slug](slug);
+}
+
+function serializeRecipesForDraft() {
+  return state.recipes.map(r => ({
+    name: r.name,
+    ingredients: r.ingredients
+  }));
+}
+
+const _debouncedRecipeDraftSave = debounce(async () => {
+  if (!state.connected) return;
+  const payload = serializeRecipesForDraft();
+  // Guard: never let an empty/all-deleted recipe list overwrite previously
+  // saved recipes (prevents a stale idle device from wiping real data).
+  const hasContent = payload.some(r => r.ingredients && r.ingredients.length);
+  if (!hasContent) return;
+  try { await setDraftState('recipes', payload); }
+  catch (err) { console.error('setDraftState failed for recipes', err); }
 }, 1000);
 
-function persistDraftState() {
-  if (!state.connected) { console.log('persistDraftState: not connected, skipping'); return; }
-  console.log('persistDraftState: calling debounced save');
-  _debouncedSetDraftState(serializeMealsForDraft());
+function persistRecipeDraft() {
+  if (!state.connected) return;
+  _debouncedRecipeDraftSave();
 }
 
 // ─── NIGHTSCOUT POLLING ──────────────────────────────────────────────────────
@@ -1573,7 +1617,7 @@ function recordAutoPostMealReading(slug, lockedAt, bg, now) {
     trend: bg.trend || '',
     delta
   });
-  persistDraftState();
+  persistDraftState(slug);
 
   if (slug === state.activeMeal) renderPostMealTracker();
 }
