@@ -2,7 +2,6 @@ import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, get
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
 import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState } from './backend.js';
-import { estimateAbsorption } from './absorption.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
@@ -90,6 +89,14 @@ async function postBackendSetup() {
     const draft = await getDraftState();
     if (draft && draft.data && Object.keys(draft.data).length > 0) {
       applyDraftToState(draft.data);
+    }
+    if (draft && draft.data && draft.data.recipes && draft.data.recipes.length) {
+      state.recipes = draft.data.recipes.map(r => ({
+        name: r.name || '',
+        ingredients: r.ingredients || [],
+        entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '' }
+      }));
+      state.activeRecipeIndex = 0;
     }
 
     renderAll();
@@ -873,15 +880,6 @@ function setupAddFoodPanel() {
   document.getElementById('add-food-portion')?.addEventListener('input', addFoodCalcFactor);
   document.getElementById('add-food-total-carbs')?.addEventListener('input', addFoodCalcFactor);
   document.getElementById('add-food-fiber')?.addEventListener('input', addFoodCalcFactor);
-  document.getElementById('add-food-fat')?.addEventListener('input', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-protein')?.addEventListener('input', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-method')?.addEventListener('change', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-texture')?.addEventListener('change', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-mixed')?.addEventListener('change', () => addFoodRecalcAbsorption());
-  document.getElementById('add-food-absorption')?.addEventListener('input', e => {
-    const val = parseFloat(e.target.value);
-    if (!isNaN(val)) addFoodUpdateAbsorptionUI(val);
-  });
   document.getElementById('add-food-name')?.addEventListener('input', addFoodCheckName);
   document.getElementById('add-food-submit-btn')?.addEventListener('click', addFoodSubmit);
 
@@ -900,41 +898,7 @@ function addFoodCalcFactor() {
   const net = Math.max(0, carbs - fiber);
   const raw = portion > 0 ? (net / portion) : 0;
   setVal('add-food-cf', (Math.floor(raw * 100) / 100).toFixed(2));
-  addFoodRecalcAbsorption(net);
   addFoodValidate();
-}
-
-function addFoodRecalcAbsorption(netOverride) {
-  const carbs = parseFloat(document.getElementById('add-food-total-carbs')?.value) || 0;
-  const fiber = parseFloat(document.getElementById('add-food-fiber')?.value) || 0;
-  const net = typeof netOverride === 'number' ? netOverride : Math.max(0, carbs - fiber);
-
-  const hours = estimateAbsorption({
-    netCarbs: net,
-    fat: parseFloat(document.getElementById('add-food-fat')?.value) || 0,
-    protein: parseFloat(document.getElementById('add-food-protein')?.value) || 0,
-    method: document.getElementById('add-food-method')?.value || '',
-    texture: document.getElementById('add-food-texture')?.value || '',
-    mixedMeal: document.getElementById('add-food-mixed')?.checked || false
-  });
-  setVal('add-food-absorption', hours);
-  addFoodUpdateAbsorptionUI(hours);
-}
-
-function addFoodUpdateAbsorptionUI(hours) {
-  hours = parseFloat(hours);
-  setText('add-food-abs-hours', hours.toFixed(1));
-  let cat, sub, color;
-  if      (hours <= 2) { cat = 'Fast';      sub = 'high GI';            color = 'var(--error)'; }
-  else if (hours <= 3) { cat = 'Medium';    sub = 'moderate GI';        color = 'var(--warning)'; }
-  else if (hours <= 5) { cat = 'Slow';      sub = 'low GI / fat';       color = 'var(--success)'; }
-  else                 { cat = 'Very Slow'; sub = 'high fat / protein'; color = 'var(--accent)'; }
-  const catEl = document.getElementById('add-food-abs-category');
-  if (catEl) { catEl.textContent = cat; catEl.style.color = color; }
-  setText('add-food-abs-gi', sub);
-  const pct = Math.min(95, Math.max(5, ((hours - 2) / 4) * 90 + 5));
-  const fill = document.getElementById('add-food-speed-fill');
-  if (fill) { fill.style.width = pct + '%'; fill.style.background = color; }
 }
 
 function addFoodCheckName() {
@@ -960,8 +924,6 @@ function addFoodCheckName() {
       item.addEventListener('click', () => {
         document.getElementById('add-food-name').value = item.dataset.name;
         setVal('add-food-cf', (Math.floor(parseFloat(item.dataset.cf) * 100) / 100).toFixed(2));
-        setVal('add-food-absorption', item.dataset.abs);
-        addFoodUpdateAbsorptionUI(parseFloat(item.dataset.abs));
         matchesDiv.hidden = true;
         addFoodCheckName();
       });
@@ -983,7 +945,7 @@ function addFoodValidate() {
 async function addFoodSubmit() {
   const name = document.getElementById('add-food-name')?.value.trim();
   const cf   = parseFloat(document.getElementById('add-food-cf')?.value) || 0;
-  const abs  = parseFloat(document.getElementById('add-food-absorption')?.value) || 3.0;
+  const abs  = 3.0;
   const btn = document.getElementById('add-food-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
   try {
@@ -1001,14 +963,10 @@ async function addFoodSubmit() {
 }
 
 function addFoodClearFields() {
-  ['add-food-name','add-food-portion','add-food-total-carbs','add-food-fiber','add-food-fat','add-food-protein']
+  ['add-food-name','add-food-portion','add-food-total-carbs','add-food-fiber']
     .forEach(id => setVal(id, ''));
   setVal('add-food-cf', '0.00');
-  setVal('add-food-absorption', '3.0');
-  setVal('add-food-method', ''); setVal('add-food-texture', '');
-  const mixed = document.getElementById('add-food-mixed'); if (mixed) mixed.checked = false;
   const status = document.getElementById('add-food-name-status'); if (status) { status.textContent = ''; status.className = 'field-status'; }
-  addFoodUpdateAbsorptionUI(3.0);
   addFoodValidate();
 }
 
@@ -1303,6 +1261,7 @@ function setupRecipePanel() {
   document.getElementById('new-recipe-btn')?.addEventListener('click', () => {
     state.recipes.push(createRecipe()); state.activeRecipeIndex = state.recipes.length - 1;
     renderRecipeTabs(); renderRecipePanel();
+    persistRecipeDraft();
   });
   document.getElementById('recipe-add-ingredient-btn')?.addEventListener('click', () => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
@@ -1314,6 +1273,7 @@ function setupRecipePanel() {
     recipe.entryFood = { name:'', carbFactor:null, weightG:'', carbsG:'' };
     ['recipe-search-input','recipe-entry-cf','recipe-entry-weight','recipe-entry-carbs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     renderRecipeIngredients(); renderRecipeComposite();
+    persistRecipeDraft();
   });
   setupRecipeEntryRow();
 
@@ -1353,6 +1313,7 @@ function setupRecipePanel() {
     const recipe = state.recipes[state.activeRecipeIndex]; if (recipe) recipe.name = e.target.value;
     const tabs = document.querySelectorAll('.recipe-tab-pill');
     if (tabs[state.activeRecipeIndex]) tabs[state.activeRecipeIndex].textContent = e.target.value || `Recipe ${state.activeRecipeIndex+1}`;
+    persistRecipeDraft();
   });
 }
 
@@ -1414,13 +1375,36 @@ function renderRecipeIngredients() {
   const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
   tbody.innerHTML = '';
   recipe.ingredients.forEach((ing, i) => {
-    const carbs = calcNetCarbs(parseFloat(ing.weightG)||0, ing.carbFactor||0);
+    const carbsVal = calcNetCarbs(parseFloat(ing.weightG) || 0, ing.carbFactor || 0);
     const row = document.createElement('tr');
     row.innerHTML = `<td>${escHtml(ing.name)}</td><td>${ing.carbFactor!=null?ing.carbFactor:'—'}</td>
-      <td><input type="number" class="input input--sm" value="${ing.weightG||''}" min="0" step="1" /></td>
-      <td>${carbs.toFixed(1)}</td><td><button class="btn btn--icon">×</button></td>`;
-    row.querySelector('input').addEventListener('input', e => { recipe.ingredients[i].weightG = parseFloat(e.target.value)||0; renderRecipeIngredients(); renderRecipeComposite(); });
-    row.querySelector('button').addEventListener('click', () => { recipe.ingredients.splice(i, 1); renderRecipeIngredients(); renderRecipeComposite(); });
+      <td><input type="number" class="input input--sm ing-weight" value="${ing.weightG||''}" min="0" step="1" /></td>
+      <td><input type="number" class="input input--sm ing-carbs" value="${carbsVal||''}" min="0" step="0.1" /></td>
+      <td><button class="btn btn--icon">×</button></td>`;
+
+    const weightInput = row.querySelector('.ing-weight');
+    const carbsInput  = row.querySelector('.ing-carbs');
+
+    weightInput.addEventListener('input', e => {
+      const w = parseFloat(e.target.value) || 0;
+      recipe.ingredients[i].weightG = w;
+      if (ing.carbFactor) carbsInput.value = calcNetCarbs(w, ing.carbFactor);
+      renderRecipeComposite();
+    });
+    carbsInput.addEventListener('input', e => {
+      const c = parseFloat(e.target.value) || 0;
+      if (ing.carbFactor) {
+        const w = calcWeightFromCarbs(c, ing.carbFactor);
+        recipe.ingredients[i].weightG = w;
+        weightInput.value = w;
+      }
+      renderRecipeComposite();
+    });
+    row.querySelector('button').addEventListener('click', () => {
+      recipe.ingredients.splice(i, 1); renderRecipeIngredients(); renderRecipeComposite();
+      persistRecipeDraft();
+    });
+
     tbody.appendChild(row);
   });
 }
@@ -1530,6 +1514,29 @@ function persistDraftState(slug) {
     }, 1000);
   }
   _debouncedDraftSavers[slug](slug);
+}
+
+function serializeRecipesForDraft() {
+  return state.recipes.map(r => ({
+    name: r.name,
+    ingredients: r.ingredients
+  }));
+}
+
+const _debouncedRecipeDraftSave = debounce(async () => {
+  if (!state.connected) return;
+  const payload = serializeRecipesForDraft();
+  // Guard: never let an empty/all-deleted recipe list overwrite previously
+  // saved recipes (prevents a stale idle device from wiping real data).
+  const hasContent = payload.some(r => r.ingredients && r.ingredients.length);
+  if (!hasContent) return;
+  try { await setDraftState('recipes', payload); }
+  catch (err) { console.error('setDraftState failed for recipes', err); }
+}, 1000);
+
+function persistRecipeDraft() {
+  if (!state.connected) return;
+  _debouncedRecipeDraftSave();
 }
 
 // ─── NIGHTSCOUT POLLING ──────────────────────────────────────────────────────
