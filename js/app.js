@@ -613,12 +613,12 @@ function updateBolusLive() { renderBolusPanel(); persistDraftState(); }
 function renderBolusPanel() {
   const meal = getCurrentMeal(); const settings = getCurrentMealSettings();
   const foods = meal.foods.map(f => ({ weightG: parseFloat(f.weightG) || 0, carbFactor: f.carbFactor || 0 }));
-  const result = calcBolus({ foods, currentBG: parseFloat(meal.currentBG) || null, targetBG: settings.target_bg, icr: settings.icr, isf: settings.isf, iob: parseFloat(meal.iob) || 0 });
+  const result = calcBolus({ foods, currentBG: parseFloat(meal.currentBG) || null, targetBG: settings.target_bg, icr: settings.icr, isf: settings.isf, iob: 0 });
   setText('summary-carbs',      result.totalNetCarbs.toFixed(1) + ' g');
   setText('summary-carbs-hero', result.totalNetCarbs.toFixed(1));
   setText('summary-meal-bolus', result.mealBolus.toFixed(2) + ' U');
   setText('summary-correction', result.correctionBolus.toFixed(2) + ' U');
-  setText('summary-iob',        '−' + result.iobOffset.toFixed(2) + ' U');
+  setText('summary-iob', (parseFloat(meal.iob) || 0).toFixed(2) + ' U');
   setText('summary-total',      result.totalBolus.toFixed(2));
 }
 
