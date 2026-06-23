@@ -145,10 +145,19 @@ export function createFoodDropdown(results, onSelect) {
 export function positionDropdown(dropdown, referenceEl) {
   if (!dropdown || !referenceEl) return;
   const rect = referenceEl.getBoundingClientRect();
+  const dropdownHeight = 240;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const openUpward = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
   dropdown.style.position = 'fixed';
-  dropdown.style.top  = (rect.bottom + 2) + 'px';
   dropdown.style.left = rect.left + 'px';
   dropdown.style.width = Math.max(rect.width, 260) + 'px';
+  if (openUpward) {
+    dropdown.style.top = 'auto';
+    dropdown.style.bottom = (window.innerHeight - rect.top + 2) + 'px';
+  } else {
+    dropdown.style.bottom = 'auto';
+    dropdown.style.top = (rect.bottom + 2) + 'px';
+  }
   document.body.appendChild(dropdown);
 }
 
