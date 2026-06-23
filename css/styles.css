@@ -1207,6 +1207,8 @@ select { cursor: pointer; }
   /* ── Calc tab panels: show/hide cards per active tab ── */
   .calc-grid { display: block; }
   .calc-grid > * { display: none; margin-bottom: 12px; }
+  .food-list-card,
+  .notes-card { display: none; }
 
   /* entry tab: food entry card + food list + notes */
   body[data-calc-tab="entry"] .food-entry-card,
