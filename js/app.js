@@ -60,6 +60,7 @@ async function init() {
 
   renderAll();
   setupNavigation();
+  setupMobileCalcTabs();
   setupTimingCard();
   setupFoodEntryRow();
   setupCustomFoodPanel();
@@ -608,7 +609,7 @@ function performFoodSearch(query, inputEl, onSelect) {
 
 // ─── BOLUS PANEL ─────────────────────────────────────────────────────────────
 
-function updateBolusLive() { renderBolusPanel(); persistDraftState(); }
+function updateBolusLive() { renderBolusPanel(); updateMobileStatsStrip(); persistDraftState(); }
 
 function renderBolusPanel() {
   const meal = getCurrentMeal(); const settings = getCurrentMealSettings();
@@ -763,6 +764,55 @@ function setupNavigation() {
   document.getElementById('nightly-export-time')?.addEventListener('change', e => {
     persistConfig({ nightly_export_time: e.target.value });
   });
+  // Mobile tools button
+  const mobileToolsBtn = document.getElementById('mobile-tools-btn');
+  const mobileToolsDropdown = document.getElementById('mobile-tools-dropdown');
+  if (mobileToolsBtn && mobileToolsDropdown) {
+    mobileToolsBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      mobileToolsDropdown.hidden = !mobileToolsDropdown.hidden;
+    });
+    document.addEventListener('click', () => { if (mobileToolsDropdown) mobileToolsDropdown.hidden = true; });
+
+    // Mirror the desktop tools actions
+    document.getElementById('mobile-tools-export-current')?.addEventListener('click', () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-export-current')?.click(); });
+    document.getElementById('mobile-tools-clear-current')?.addEventListener('click',  () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-clear-current')?.click(); });
+    document.getElementById('mobile-tools-export-all')?.addEventListener('click',     () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-export-all')?.click(); });
+    document.getElementById('mobile-tools-recipe')?.addEventListener('click',         () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-recipe')?.click(); });
+    document.getElementById('mobile-tools-food-search')?.addEventListener('click',    () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-food-search')?.click(); });
+    document.getElementById('mobile-tools-add-food')?.addEventListener('click',       () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-add-food')?.click(); });
+    document.getElementById('mobile-tools-tracker')?.addEventListener('click',        () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-tracker')?.click(); });
+  };
+}
+
+// ─── MOBILE CALC TABS ────────────────────────────────────────────────────────
+
+function setupMobileCalcTabs() {
+  function switchCalcTab(tab) {
+    document.body.dataset.calcTab = tab;
+    document.querySelectorAll('.bottom-nav [data-calc-tab]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.calcTab === tab && btn.dataset.nav === 'calculator');
+    });
+  }
+
+  document.querySelectorAll('[data-calc-tab]').forEach(el => {
+    el.addEventListener('click', () => {
+      navigate('calculator');
+      switchCalcTab(el.dataset.calcTab);
+    });
+  });
+
+  // Default tab on load
+  switchCalcTab('entry');
+}
+
+function updateMobileStatsStrip() {
+  const meal = getCurrentMeal();
+  const settings = getCurrentMealSettings();
+  const bg = parseFloat(meal.currentBG);
+  document.getElementById('strip-bg').textContent  = isNaN(bg) ? '—' : bg.toFixed(1);
+  document.getElementById('strip-carbs').textContent = (document.getElementById('summary-carbs-hero')?.textContent || '0') + ' g';
+  document.getElementById('strip-bolus').textContent = (document.getElementById('summary-total')?.textContent || '0.00') + ' U';
 }
 
 // ─── TOOLS MENU ──────────────────────────────────────────────────────────────
