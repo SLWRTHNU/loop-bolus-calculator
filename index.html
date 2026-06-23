@@ -74,6 +74,24 @@
         ════════════════════════════════════════════════════════════════ -->
         <section class="section" id="calculator" aria-label="Calculator">
 
+          <!-- Mobile stats strip -->
+          <div class="mobile-stats-strip" id="mobile-stats-strip">
+            <button class="mobile-stat" data-calc-tab="factors">
+              <span class="mobile-stat__label">BG</span>
+              <span class="mobile-stat__value" id="strip-bg">—</span>
+            </button>
+            <div class="mobile-stat-divider"></div>
+            <button class="mobile-stat" data-calc-tab="entry">
+              <span class="mobile-stat__label">Carbs</span>
+              <span class="mobile-stat__value" id="strip-carbs">0 g</span>
+            </button>
+            <div class="mobile-stat-divider"></div>
+            <button class="mobile-stat" data-calc-tab="dose">
+              <span class="mobile-stat__label">Bolus</span>
+              <span class="mobile-stat__value mobile-stat__value--accent" id="strip-bolus">0.00 U</span>
+            </button>
+          </div>
+
           <div class="meal-tabs" id="meal-tabs" role="tablist" aria-label="Meal selection"></div>
 
           <!-- Calculator grid: 1fr 1fr 240px × auto auto -->
@@ -623,18 +641,38 @@
 
   </div><!-- /calculator-layout -->
 
+  <!-- ── Floating Tools Button (mobile) ───────────────────────────────────── -->
+  <div class="mobile-tools-wrapper" id="mobile-tools-wrapper">
+    <button class="mobile-tools-btn" id="mobile-tools-btn" aria-haspopup="true" aria-controls="mobile-tools-dropdown" aria-label="Tools">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <div class="mobile-tools-dropdown" id="mobile-tools-dropdown" hidden role="menu">
+      <button id="mobile-tools-export-current" role="menuitem">Export Current Meal</button>
+      <button id="mobile-tools-clear-current"  role="menuitem">Clear Current Meal</button>
+      <button id="mobile-tools-export-all"     role="menuitem">Export All Sheets (Today)</button>
+      <button id="mobile-tools-recipe"         role="menuitem">Recipe Builder</button>
+      <button id="mobile-tools-food-search"    role="menuitem">Food Search</button>
+      <button id="mobile-tools-add-food"       role="menuitem">Add Food to Chart</button>
+      <button id="mobile-tools-tracker"        role="menuitem">Post-Meal BG Tracker</button>
+    </div>
+  </div>
+
   <nav class="bottom-nav" aria-label="Main navigation">
-    <button class="nav-btn active" data-nav="calculator">
+    <button class="nav-btn active" data-nav="calculator" data-calc-tab="entry">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h2m4 0h2M8 12h2m4 0h2M8 16h2m4 0h2"/></svg>
-      Calc
+      Food
+    </button>
+    <button class="nav-btn" data-nav="calculator" data-calc-tab="factors">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Factors
+    </button>
+    <button class="nav-btn" data-nav="calculator" data-calc-tab="dose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Dose
     </button>
     <button class="nav-btn" data-nav="log">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       Log
-    </button>
-    <button class="nav-btn" data-nav="how-to">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
-      How-To
     </button>
     <button class="nav-btn" data-nav="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
