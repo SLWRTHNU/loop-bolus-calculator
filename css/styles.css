@@ -1151,6 +1151,7 @@ select { cursor: pointer; }
     position: fixed; top: 56px; right: 0; height: calc(100dvh - 56px);
     z-index: 300; box-shadow: var(--shadow);
   }
+  .input { font-size: 16px; }
 
   /* ── Prevent horizontal overflow ── */
   body { overflow-x: hidden; }
