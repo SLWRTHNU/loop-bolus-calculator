@@ -1204,9 +1204,24 @@ select { cursor: pointer; }
   .mobile-stat__value--accent { color: var(--accent); }
   .mobile-stat-divider { width: 1px; background: var(--border); align-self: stretch; }
 
-  /* ── Calc tab panels ── */
-  .calc-tab-panel { display: none; }
-  .calc-tab-panel.active { display: block; }
+  /* ── Calc tab panels: show/hide cards per active tab ── */
+  .calc-grid { display: block; }
+  .calc-grid > * { display: none; margin-bottom: 12px; }
+
+  /* entry tab: food entry card + food list + notes */
+  body[data-calc-tab="entry"] .food-entry-card,
+  body[data-calc-tab="entry"] .food-list-card,
+  body[data-calc-tab="entry"] .notes-card { display: block; }
+
+  /* factors tab: bg panel + timing card */
+  body[data-calc-tab="factors"] #bg-panel,
+  body[data-calc-tab="factors"] .timing-card { display: block; }
+
+  /* dose tab: bolus summary card */
+  body[data-calc-tab="dose"] .bolus-summary-card { display: flex; }
+
+  /* always show post-meal tracker if visible */
+  .post-tracker-card { display: block !important; }
 
   /* ── Floating tools button ── */
   .mobile-tools-wrapper {
