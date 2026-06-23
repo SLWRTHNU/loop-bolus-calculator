@@ -144,21 +144,33 @@ export function createFoodDropdown(results, onSelect) {
 
 export function positionDropdown(dropdown, referenceEl) {
   if (!dropdown || !referenceEl) return;
-  const rect = referenceEl.getBoundingClientRect();
-  const dropdownHeight = 240;
-  const spaceBelow = window.innerHeight - rect.bottom;
-  const openUpward = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
-  dropdown.style.position = 'fixed';
-  dropdown.style.left = rect.left + 'px';
-  dropdown.style.width = Math.max(rect.width, 260) + 'px';
-  if (openUpward) {
-    dropdown.style.top = 'auto';
-    dropdown.style.bottom = (window.innerHeight - rect.top + 2) + 'px';
-  } else {
-    dropdown.style.bottom = 'auto';
-    dropdown.style.top = (rect.bottom + 2) + 'px';
-  }
   document.body.appendChild(dropdown);
+  dropdown.style.position = 'fixed';
+  dropdown.style.left = '-9999px';
+  dropdown.style.top = '-9999px';
+
+  const doPosition = () => {
+    const rect = referenceEl.getBoundingClientRect();
+    const dropdownHeight = 240;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+    dropdown.style.width = Math.max(rect.width, 260) + 'px';
+    dropdown.style.left = rect.left + 'px';
+    if (openUpward) {
+      dropdown.style.top = 'auto';
+      dropdown.style.bottom = (window.innerHeight - rect.top + 2) + 'px';
+    } else {
+      dropdown.style.bottom = 'auto';
+      dropdown.style.top = (rect.bottom + 2) + 'px';
+    }
+  };
+
+  // Delay on mobile to let the keyboard finish resizing the viewport
+  if (window.innerWidth < 600) {
+    setTimeout(doPosition, 350);
+  } else {
+    doPosition();
+  }
 }
 
 // ── Tools dropdown ──────────────────────────────────────────────────────────
