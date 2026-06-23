@@ -95,7 +95,8 @@
           <div class="meal-tabs" id="meal-tabs" role="tablist" aria-label="Meal selection"></div>
 
           <!-- Calculator grid: 1fr 1fr 240px × auto auto -->
-          <div class="calc-grid">
+          <div class="calc-tab-panel active" id="calc-tab-entry">
+          <div class="calc-grid calc-grid--entry">
 
             <!-- Card 1: Food Entry (col 1, row 1) -->
             <div class="card food-entry-card" style="grid-column:1;grid-row:1">
@@ -267,6 +268,13 @@
             </div>
 
           </div><!-- /calc-grid -->
+          </div><!-- /calc-tab-panel entry -->
+
+          <div class="calc-tab-panel" id="calc-tab-factors">
+          </div><!-- /calc-tab-panel factors -->
+
+          <div class="calc-tab-panel" id="calc-tab-dose">
+          </div><!-- /calc-tab-panel dose -->
 
           <!-- Food List (full width) -->
           <div class="card food-list-card" style="margin-top:16px">
