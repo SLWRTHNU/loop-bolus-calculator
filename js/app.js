@@ -1,7 +1,7 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState } from './backend.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState, snapshotDraftState } from './backend.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
@@ -118,6 +118,11 @@ function updateConnectionStatus() {
     statusEl.textContent = 'Offline — using local data';
     statusEl.className = 'drive-status';
   }
+}
+
+function triggerSnapshot() {
+  if (!state.connected) return;
+  snapshotDraftState();
 }
 
 function applyConfig(config) {
@@ -464,7 +469,7 @@ function setupFoodEntryRow() {
     if (cfInput)     cfInput.value = '';
     if (weightInput) weightInput.value = '';
     if (carbsInput)  carbsInput.value = '';
-    renderFoodTable(); updateBolusLive();
+    renderFoodTable(); updateBolusLive(); triggerSnapshot();
   });
 }
 
@@ -518,7 +523,7 @@ function setupCustomFoodPanel() {
     const weight = w || (cf ? Math.round((c / cf) * 10) / 10 : 0);
     getCurrentMeal().foods.push({ name, carbFactor: cf, weightG: weight, absorptionRate: 3.0 });
     enterStandardMode();
-    renderFoodTable(); updateBolusLive();
+    renderFoodTable(); updateBolusLive(); triggerSnapshot();
   });
 }
 
@@ -566,6 +571,7 @@ function renderFoodTable() {
       if (f.carbFactor && w) { carbsInput.value = calcNetCarbs(w, f.carbFactor); }
       updateBolusLive(); renderFoodTotals();
     });
+    weightInput.addEventListener('change', () => triggerSnapshot());
 
     carbsInput.addEventListener('input', e => {
       const f = getCurrentMeal().foods[i]; const c = parseFloat(e.target.value) || 0;
@@ -574,7 +580,7 @@ function renderFoodTable() {
     });
 
     row.querySelector('.food-remove-btn').addEventListener('click', () => {
-      getCurrentMeal().foods.splice(i, 1); renderFoodTable(); updateBolusLive();
+      getCurrentMeal().foods.splice(i, 1); renderFoodTable(); updateBolusLive(); triggerSnapshot();
     });
 
     tbody.appendChild(row);
@@ -1128,7 +1134,7 @@ function handleBolusGiven() {
   renderPostMealTracker();
   persistDraftState();
   clearBolusTimer(); startBolusTimerIfLocked();
-  showToast('Bolus time set to now', 'success');
+  showToast('Bolus time set to now', 'success'); triggerSnapshot();
 }
 
 // ─── EXPORT ──────────────────────────────────────────────────────────────────
@@ -1263,6 +1269,7 @@ function setupPostMealTracker() {
     getCurrentMeal().postBgReadings.push({ time: '', minSinceBolus: '', bg: '', trend: '→', delta: '' });
     renderPostMealTracker();
     persistDraftState();
+    triggerSnapshot();
   });
 }
 
@@ -1293,10 +1300,10 @@ function renderPostMealTracker() {
       persistDraftState();
     });
     row.querySelector('[data-field="bg"]').addEventListener('input', e => {
-      const rd = getCurrentMeal().postBgReadings[i]; rd.bg = parseFloat(e.target.value)||'';
-      if (i > 0) { const prev = getCurrentMeal().postBgReadings[i-1]; if (prev.bg!=='' && rd.bg!=='') { const delta = Math.round((rd.bg-prev.bg)*10)/10; rd.delta = delta; row.querySelector('.post-delta').textContent = (delta>0?'+':'')+delta; } }
-      persistDraftState();
-    });
+        const rd = getCurrentMeal().postBgReadings[i]; rd.bg = parseFloat(e.target.value)||'';
+        if (i > 0) { const prev = getCurrentMeal().postBgReadings[i-1]; if (prev.bg!=='' && rd.bg!=='') { const delta = Math.round((rd.bg-prev.bg)*10)/10; rd.delta = delta; row.querySelector('.post-delta').textContent = (delta>0?'+':'')+delta; } }
+        persistDraftState(); triggerSnapshot();
+      });
     row.querySelector('[data-field="trend"]').addEventListener('change', e => { getCurrentMeal().postBgReadings[i].trend = e.target.value; persistDraftState(); });
     row.querySelector('[data-remove]').addEventListener('click', () => { getCurrentMeal().postBgReadings.splice(i, 1); renderPostMealTracker(); persistDraftState(); });
     tbody.appendChild(row);
@@ -1362,7 +1369,7 @@ function setupRecipePanel() {
         weightG: ing.weightG
       }))
     });
-    renderFoodTable(); updateBolusLive(); showToast('Recipe added to meal', 'success');
+    renderFoodTable(); updateBolusLive(); showToast('Recipe added to meal', 'success'); triggerSnapshot();
   });
   document.getElementById('recipe-name-input')?.addEventListener('input', e => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (recipe) recipe.name = e.target.value;
