@@ -65,3 +65,8 @@ export async function getDraftState() {
 export async function setDraftState(slug, mealData) {
   return backendPost('setDraftState', { slug, mealData });
 }
+
+export async function snapshotDraftState() {
+  if (!navigator.onLine) return;
+  try { await backendGet('snapshotDraftState'); } catch {}
+}
