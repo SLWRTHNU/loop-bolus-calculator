@@ -72,7 +72,7 @@ async function init() {
   setupExportTimer();
   setInterval(refreshFoodChart, 60000);
   navigate(getCurrentSection());
-  window.scrollTo(0, 0);
+  setTimeout(() => window.scrollTo(0, 0), 0);
 
   state.connected = await ping();
   updateConnectionStatus();
@@ -232,6 +232,7 @@ function renderAll() {
   setVal('meal-notes', getCurrentMeal().notes || '');
   renderPostMealTracker();
   updateSyncIndicator();
+  updateMobileStatsStrip();
   // Restore per-tab entry food DOM
   const ef = getCurrentMeal().entryFood;
   const searchInput = document.getElementById('entry-food-search'); if (searchInput) searchInput.value = ef.name || '';
@@ -808,9 +809,13 @@ function setupMobileCalcTabs() {
 
 function updateMobileStatsStrip() {
   const meal = getCurrentMeal();
-  const settings = getCurrentMealSettings();
   const bg = parseFloat(meal.currentBG);
-  document.getElementById('strip-bg').textContent  = isNaN(bg) ? '—' : bg.toFixed(1);
+  const bgEl = document.getElementById('strip-bg');
+  const locked = state.bolusLockedAt[state.activeMeal];
+  // Freeze BG display when bolus is locked, same as desktop
+  if (bgEl && !locked) {
+    bgEl.textContent = isNaN(bg) ? '—' : bg.toFixed(1);
+  }
   document.getElementById('strip-carbs').textContent = (document.getElementById('summary-carbs-hero')?.textContent || '0') + ' g';
   document.getElementById('strip-bolus').textContent = (document.getElementById('summary-total')?.textContent || '0.00') + ' U';
 }
