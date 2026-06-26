@@ -53,12 +53,7 @@ export function applyTheme(value) {
 
 export function initTheme() {
   const savedColor = storage.get('color_theme', 'green');
-  const savedMode  = storage.get('mode', 'system');
   applyColorTheme(savedColor);
-  applyMode(savedMode);
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (storage.get('mode', 'system') === 'system') applyMode('system');
-  });
 }
 
 export function formatTime(date) {
