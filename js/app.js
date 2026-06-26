@@ -702,7 +702,6 @@ function renderSettingsSection() {
   const dexConfig = storage.get('dexcom_config', {}); setVal('dex-user', dexConfig.user||''); setVal('dex-pass', dexConfig.pass||''); setVal('dex-region', dexConfig.region||'us');
   const unitsSelect = document.getElementById('units-select'); if (unitsSelect) unitsSelect.value = state.units;
   const colorSelect = document.getElementById('color-theme-select'); if (colorSelect) colorSelect.value = storage.get('color_theme','green');
-  const modeSelect  = document.getElementById('mode-select');  if (modeSelect)  modeSelect.value  = storage.get('mode','system');
   const clearTimeInput = document.getElementById('clear-time-input');
   if (clearTimeInput) clearTimeInput.value = state.config?.clear_time || '04:00';
   const nightlyEnabledInput = document.getElementById('nightly-export-enabled');
@@ -766,7 +765,6 @@ function setupNavigation() {
   });
   document.getElementById('units-select')?.addEventListener('change', e => { changeUnits(e.target.value); });
   document.getElementById('color-theme-select')?.addEventListener('change', e => { applyColorTheme(e.target.value); persistConfig({ color_theme: e.target.value }); });
-  document.getElementById('mode-select')?.addEventListener('change',  e => { applyMode(e.target.value);  persistConfig({ mode: e.target.value }); });
   document.getElementById('clear-time-input')?.addEventListener('change', e => { persistConfig({ clear_time: e.target.value }); });
   document.getElementById('nightly-export-enabled')?.addEventListener('change', e => {
     persistConfig({ nightly_export_enabled: e.target.checked });
