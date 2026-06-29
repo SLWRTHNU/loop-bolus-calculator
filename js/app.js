@@ -1,7 +1,7 @@
 import { storage, MEAL_SLUGS, MEAL_LABELS, getMealSettings, setMealSettings, getTodayLog, appendToLog, setTodayLog } from './storage.js';
 import { calcBolus, calcNetCarbs, calcWeightFromCarbs, calcCompositeCF, formatBG, mgdlToMmol, mmolToMgdl } from './calculator.js';
 import { HEALTH_CANADA_FOODS } from './fooddata.js';
-import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState, snapshotDraftState } from './backend.js';
+import { ping, getConfig, setConfig, getFoodChart, logMeal, searchFood, addFood, getDraftState, setDraftState, snapshotDraftState, restoreDraftState } from './backend.js';
 import { fetchBG as nsBG, fetchIOB as nsIOB, fetchCOB as nsCOB, fetchProfile as nsProfile } from './nightscout.js';
 import { fetchBG as dexBG } from './dexcom.js';
 import {
@@ -790,6 +790,7 @@ function setupNavigation() {
     document.getElementById('mobile-tools-food-search')?.addEventListener('click',    () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-food-search')?.click(); });
     document.getElementById('mobile-tools-add-food')?.addEventListener('click',       () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-add-food')?.click(); });
     document.getElementById('mobile-tools-tracker')?.addEventListener('click',        () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-tracker')?.click(); });
+    document.getElementById('mobile-tools-restore-draft')?.addEventListener('click',  () => { mobileToolsDropdown.hidden = true; document.getElementById('tools-restore-draft')?.click(); });
   };
 }
 
@@ -874,6 +875,28 @@ function setupToolsMenu() {
     document.getElementById('tools-dropdown').hidden = true;
     const tracker = document.getElementById('post-meal-tracker');
     if (tracker) tracker.hidden = !tracker.hidden;
+  });
+  document.getElementById('tools-restore-draft')?.addEventListener('click', async () => {
+    document.getElementById('tools-dropdown').hidden = true;
+    if (!confirm('Restore state from Draft State A1? This will overwrite your current session.')) return;
+    showToast('Restoring...', 'info');
+    try {
+      const draft = await restoreDraftState();
+      if (!draft || !draft.data) { showToast('Nothing to restore', 'error'); return; }
+      applyDraftToState(draft.data);
+      if (draft.data.recipes && draft.data.recipes.length) {
+        state.recipes = draft.data.recipes.map(r => ({
+          name: r.name || '',
+          ingredients: r.ingredients || [],
+          entryFood: { name: '', carbFactor: null, weightG: '', carbsG: '' }
+        }));
+        state.activeRecipeIndex = 0;
+      }
+      renderAll();
+      showToast('Draft restored', 'success');
+    } catch (err) {
+      showToast('Restore failed: ' + err.message, 'error');
+    }
   });
 }
 
