@@ -53,7 +53,12 @@ export function applyTheme(value) {
 
 export function initTheme() {
   const savedColor = storage.get('color_theme', 'green');
+  const savedMode  = storage.get('mode', 'system');
   applyColorTheme(savedColor);
+  applyMode(savedMode);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (storage.get('mode', 'system') === 'system') applyMode('system');
+  });
 }
 
 export function formatTime(date) {
@@ -61,7 +66,10 @@ export function formatTime(date) {
 }
 
 export function formatDate(date) {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function todayStr() {
@@ -139,33 +147,12 @@ export function createFoodDropdown(results, onSelect) {
 
 export function positionDropdown(dropdown, referenceEl) {
   if (!dropdown || !referenceEl) return;
-  document.body.appendChild(dropdown);
+  const rect = referenceEl.getBoundingClientRect();
   dropdown.style.position = 'fixed';
-  dropdown.style.left = '-9999px';
-  dropdown.style.top = '-9999px';
-
-  const doPosition = () => {
-    const rect = referenceEl.getBoundingClientRect();
-    const dropdownHeight = 240;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpward = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
-    dropdown.style.width = Math.max(rect.width, 260) + 'px';
-    dropdown.style.left = rect.left + 'px';
-    if (openUpward) {
-      dropdown.style.top = 'auto';
-      dropdown.style.bottom = (window.innerHeight - rect.top + 2) + 'px';
-    } else {
-      dropdown.style.bottom = 'auto';
-      dropdown.style.top = (rect.bottom + 2) + 'px';
-    }
-  };
-
-  // Delay on mobile to let the keyboard finish resizing the viewport
-  if (window.innerWidth < 600) {
-    setTimeout(doPosition, 350);
-  } else {
-    doPosition();
-  }
+  dropdown.style.top  = (rect.bottom + 2) + 'px';
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.width = Math.max(rect.width, 260) + 'px';
+  document.body.appendChild(dropdown);
 }
 
 // ── Tools dropdown ──────────────────────────────────────────────────────────
