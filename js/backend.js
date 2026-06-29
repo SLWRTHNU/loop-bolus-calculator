@@ -28,6 +28,11 @@ export async function ping() {
   } catch { return false; }
 }
 
+export async function restoreDraftState() {
+  const r = await backendGet('restoreDraftState');
+  return r.success ? r.draft : null;
+}
+
 export async function getConfig() {
   const r = await backendGet('getConfig');
   return r.success ? r.config : null;
