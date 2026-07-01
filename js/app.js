@@ -1347,6 +1347,15 @@ function calcRecipeCompositeCF(recipe) {
 
 function setupRecipePanel() {
   document.getElementById('close-recipe-btn')?.addEventListener('click', closeRecipePanel);
+  document.getElementById('clear-recipe-btn')?.addEventListener('click', () => {
+    const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
+    if (!confirm('Clear all ingredients from this recipe?')) return;
+    recipe.ingredients = [];
+    recipe.entryFood = { name: '', carbFactor: null, weightG: '', carbsG: '' };
+    ['recipe-search-input','recipe-entry-cf','recipe-entry-weight','recipe-entry-carbs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    renderRecipeIngredients(); renderRecipeComposite();
+    persistRecipeDraft();
+  });
   document.getElementById('new-recipe-btn')?.addEventListener('click', () => {
     state.recipes.push(createRecipe()); state.activeRecipeIndex = state.recipes.length - 1;
     renderRecipeTabs(); renderRecipePanel();
@@ -1425,6 +1434,9 @@ function setupRecipeEntryRow() {
     if (cfInput) cfInput.value = ''; debouncedSearch(e.target.value, e.target);
   });
   searchInput?.addEventListener('blur', () => { setTimeout(() => { document.querySelector('.food-dropdown')?.remove(); }, 150); });
+  weightInput?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('recipe-add-ingredient-btn')?.click(); });
+  carbsInput?.addEventListener('keydown',  e => { if (e.key === 'Enter') document.getElementById('recipe-add-ingredient-btn')?.click(); });
+  searchInput?.addEventListener('keydown', e => { if (e.key === 'Enter') setTimeout(() => document.getElementById('recipe-add-ingredient-btn')?.click(), 200); });
   weightInput?.addEventListener('input', e => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
     const w = parseFloat(e.target.value)||0; recipe.entryFood.weightG = w||'';
