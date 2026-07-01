@@ -1349,11 +1349,11 @@ function setupRecipePanel() {
   document.getElementById('close-recipe-btn')?.addEventListener('click', closeRecipePanel);
   document.getElementById('clear-recipe-btn')?.addEventListener('click', () => {
     const recipe = state.recipes[state.activeRecipeIndex]; if (!recipe) return;
-    if (!confirm('Clear all ingredients from this recipe?')) return;
-    recipe.ingredients = [];
-    recipe.entryFood = { name: '', carbFactor: null, weightG: '', carbsG: '' };
-    ['recipe-search-input','recipe-entry-cf','recipe-entry-weight','recipe-entry-carbs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    renderRecipeIngredients(); renderRecipeComposite();
+    if (!confirm(`Delete "${recipe.name || `Recipe ${state.activeRecipeIndex + 1}`}"?`)) return;
+    state.recipes.splice(state.activeRecipeIndex, 1);
+    if (state.recipes.length === 0) state.recipes.push(createRecipe());
+    state.activeRecipeIndex = Math.min(state.activeRecipeIndex, state.recipes.length - 1);
+    renderRecipeTabs(); renderRecipePanel();
     persistRecipeDraft();
   });
   document.getElementById('new-recipe-btn')?.addEventListener('click', () => {
