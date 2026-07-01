@@ -445,6 +445,9 @@ function setupFoodEntryRow() {
     if (cfInput) cfInput.value = ''; debouncedSearch(e.target.value, e.target);
   });
   searchInput?.addEventListener('blur', () => { setTimeout(() => { document.querySelector('.food-dropdown')?.remove(); }, 150); });
+  weightInput?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('recipe-add-ingredient-btn')?.click(); });
+  carbsInput?.addEventListener('keydown',  e => { if (e.key === 'Enter') document.getElementById('recipe-add-ingredient-btn')?.click(); });
+  searchInput?.addEventListener('keydown', e => { if (e.key === 'Enter') setTimeout(() => document.getElementById('recipe-add-ingredient-btn')?.click(), 200); });
   weightInput?.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn?.click(); });
   carbsInput?.addEventListener('keydown',  e => { if (e.key === 'Enter') addBtn?.click(); });
   searchInput?.addEventListener('keydown', e => { if (e.key === 'Enter') setTimeout(() => addBtn?.click(), 200); });
